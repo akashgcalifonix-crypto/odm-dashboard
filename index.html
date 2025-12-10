@@ -4,31 +4,29 @@
   <meta charset="utf-8"/>
   <title>Defect Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
   <style>
     body { font-family: Arial, sans-serif; margin: 12px; background: #f7fafc; }
     .card { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-
     input, textarea, button { padding: 8px; margin: 6px 0; width: 100%; box-sizing: border-box; }
-    .row { display: flex; gap: 8px; }
+    .row { display: flex; gap: 10px; }
     .row > * { flex: 1; }
-
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
+    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
     th { background: #0369a1; color: white; }
-
     .btn { background: #0369a1; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; }
     .btn.secondary { background: #6b7280; }
+    .thumb { width: 60px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; }
 
-    .thumb { width: 60px; height: 50px; border-radius: 5px; object-fit: cover; cursor: pointer; }
-
-    .modal { position: fixed; top:0; left:0; right:0; bottom:0;
-             background: rgba(0,0,0,0.4); display:none;
-             align-items:center; justify-content:center; }
-
+    /* Modal */
+    .modal { 
+        position: fixed; top:0; left:0; right:0; bottom:0; 
+        background: rgba(0,0,0,0.5); 
+        display:none; justify-content:center; align-items:center;
+    }
     .modal .box { 
-      background:white; padding:20px; border-radius:8px;
-      max-width:90%; max-height:90%; 
-      text-align:center;
+        background:white; padding:20px; border-radius:8px; 
+        max-width:90%; max-height:90%; overflow:auto; text-align:center;
     }
   </style>
 </head>
@@ -70,10 +68,10 @@
   <label>Images</label>
   <input id="images" type="file" accept="image/*" multiple>
 
-  <button class="btn" id="saveBtn">Save (Online)</button>
-  <button class="btn secondary" id="clearBtn">Clear</button>
+  <button id="saveBtn" class="btn">Save (Online)</button>
+  <button id="clearBtn" class="btn secondary">Clear</button>
 
-  <button class="btn secondary" id="refreshBtn" style="margin-top:10px;">Refresh</button>
+  <button id="refreshBtn" class="btn secondary" style="margin-top:15px;">Refresh</button>
 
   <table id="dataTable">
     <thead>
@@ -87,43 +85,53 @@
   </table>
 </div>
 
-<!-- PREVIEW MODAL -->
+
+<!-- IMAGE PREVIEW MODAL -->
 <div id="modal" class="modal">
   <div class="box">
     <h3>Image Preview</h3>
-
-    <img id="modalImage" style="max-width:100%;border-radius:8px;"><br><br>
-
+    <img id="modalImage" style="max-width:100%; border-radius:8px;">
+    <br><br>
     <button class="btn" id="downloadPdfBtn">Download PDF</button>
     <button class="btn secondary" onclick="closeModal()">Close</button>
   </div>
 </div>
 
-<!-- PDF LIBRARY -->
+
+<!-- jsPDF CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 
-const SCRIPT_URL =
+const SCRIPT_URL = 
  "https://script.google.com/macros/s/AKfycbxzSUli7P6SxV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
 
+
+/* Escape text safely */
 function escapeHtml(s){
   if(!s) return "";
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
 }
 
+
+/* Read Images */
 function readFilesDataURLs(files){
   return Promise.all([...files].map(file => new Promise(res=>{
-    let fr=new FileReader();
-    fr.onload=()=>res({name:file.name, dataUrl:fr.result});
+    const fr = new FileReader();
+    fr.onload = ()=>res({name:file.name, dataUrl:fr.result});
     fr.readAsDataURL(file);
   })));
 }
 
-async function saveRecord(action="create", rowIndex=null){
-  const imagesData = await readFilesDataURLs(images.files);
 
-  const record = {
+/* Save / Update Record */
+async function saveRecord(action="create", rowIndex=null){
+  const imgs = await readFilesDataURLs(images.files);
+
+  let record = {
     date: date.value,
     odm: odm.value,
     model: model.value,
@@ -134,47 +142,50 @@ async function saveRecord(action="create", rowIndex=null){
     rca: rca.value,
     remarks: remarks.value,
     preparedBy: preparedBy.value,
-    images: imagesData
+    images: imgs
   };
 
-  const payload = { action, record };
-  if(action==="update") payload.rowIndex=rowIndex;
+  let payload = { action, record };
+  if(action==="update") payload.rowIndex = rowIndex;
 
-  const res = await fetch(SCRIPT_URL, {
+  let res = await fetch(SCRIPT_URL, {
     method:"POST",
     body: JSON.stringify(payload)
   });
 
-  const j = await res.json();
+  let j = await res.json();
   if(j.status==="success"){
     alert("Saved");
     clearForm();
     loadData();
-  }
-  else alert("Failed: " + j.message);
+  } else alert("Failed: "+j.message);
 }
 
+
+/* Clear Form */
 function clearForm(){
   ["date","odm","model","po","item","defectDetails","defectRate","rca","remarks","preparedBy"]
   .forEach(id=>document.getElementById(id).value="");
   images.value="";
-  saveBtn.textContent="Save (Online)";
-  saveBtn.onclick=()=>saveRecord("create");
+  saveBtn.textContent = "Save (Online)";
+  saveBtn.onclick = ()=>saveRecord("create");
 }
 
+
+/* Render Table */
 function renderTable(rows){
-  const tbody=document.querySelector("#dataTable tbody");
-  tbody.innerHTML="";
+  const tbody = document.querySelector("#dataTable tbody");
+  tbody.innerHTML = "";
 
   rows.forEach(r=>{
-    const imgs=(r.ImageURLs||"").split(";").map(x=>x.trim()).filter(Boolean);
+    let imgs = (r.ImageURLs || "").split(";").map(x=>x.trim()).filter(Boolean);
 
-    const imgHtml = imgs.length
-      ? imgs.map(u=>`<img src="${u}" class="thumb" onclick="openPreview('${u}')">`).join("")
+    let imgHtml = imgs.length ?
+      imgs.map(u=>`<img src="${u}" class="thumb" onclick="openPreview(&quot;${u}&quot;)">`).join("")
       : "-";
 
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
+    let tr = document.createElement("tr");
+    tr.innerHTML = `
       <td>${escapeHtml(r.Date)}</td>
       <td>${escapeHtml(r.ODM)}</td>
       <td>${escapeHtml(r.Model)}</td>
@@ -189,62 +200,74 @@ function renderTable(rows){
       <td>
         <button class="btn secondary" onclick="editRecord(${r._rowIndex})">Edit</button>
         <button class="btn" onclick="deleteRecord(${r._rowIndex})">Delete</button>
-      </td>`;
+      </td>
+    `;
     tbody.appendChild(tr);
   });
 }
 
+
+/* Load Data */
 async function loadData(){
-  const res=await fetch(SCRIPT_URL);
-  const j=await res.json();
+  let res = await fetch(SCRIPT_URL);
+  let j = await res.json();
   renderTable(j.rows);
 }
 
+
+/* Edit */
 async function editRecord(rowIndex){
-  const res=await fetch(SCRIPT_URL);
-  const j=await res.json();
-  const r=j.rows.find(x=>x._rowIndex==rowIndex);
+  let res = await fetch(SCRIPT_URL);
+  let j = await res.json();
+  let r = j.rows.find(x=>x._rowIndex==rowIndex);
 
-  date.value=r.Date;
-  odm.value=r.ODM;
-  model.value=r.Model;
-  po.value=r.PO;
-  item.value=r.Item;
-  defectDetails.value=r.DefectDetails;
-  defectRate.value=r.DefectRate;
-  rca.value=r.RCA;
-  remarks.value=r.Remarks;
-  preparedBy.value=r.PreparedBy;
+  date.value = r.Date;
+  odm.value = r.ODM;
+  model.value = r.Model;
+  po.value = r.PO;
+  item.value = r.Item;
+  defectDetails.value = r.DefectDetails;
+  defectRate.value = r.DefectRate;
+  rca.value = r.RCA;
+  remarks.value = r.Remarks;
+  preparedBy.value = r.PreparedBy;
 
-  saveBtn.textContent="Update";
-  saveBtn.onclick=()=>saveRecord("update", rowIndex);
+  saveBtn.textContent = "Update";
+  saveBtn.onclick = ()=>saveRecord("update", rowIndex);
 }
 
+
+/* Delete */
 async function deleteRecord(rowIndex){
-  if(!confirm("Delete?")) return;
-  
-  const res=await fetch(SCRIPT_URL, {
+  if(!confirm("Delete this record?")) return;
+
+  let res = await fetch(SCRIPT_URL,{
     method:"POST",
     body: JSON.stringify({action:"delete", rowIndex})
   });
 
-  const j=await res.json();
-  if(j.status==="success"){ alert("Deleted"); loadData(); }
+  let j = await res.json();
+  if(j.status==="success"){
+    alert("Deleted");
+    loadData();
+  }
 }
 
-/* ---------------------- PREVIEW & PDF ----------------------- */
 
+/* Preview Popup */
 function openPreview(url){
   document.getElementById("modalImage").src = url;
   document.getElementById("modal").style.display = "flex";
 
-  document.getElementById("downloadPdfBtn").onclick = ()=> downloadPDF(url);
+  document.getElementById("downloadPdfBtn").onclick = ()=>downloadPDF(url);
 }
 
 function closeModal(){
   document.getElementById("modal").style.display = "none";
 }
 
+
+/* Download PDF */
 function downloadPDF(imgUrl){
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF();
@@ -253,19 +276,19 @@ function downloadPDF(imgUrl){
   img.src = imgUrl;
 
   img.onload = function(){
-    pdf.addImage(img, "JPEG", 10, 10, 180, 150);
-    pdf.save("Image.pdf");
+    pdf.addImage(img,"JPEG",10,10,180,150);
+    pdf.save("Defect_Image.pdf");
   };
 }
 
-/* INITIAL SETUP */
-saveBtn.onclick=()=>saveRecord("create");
-clearBtn.onclick=clearForm;
-refreshBtn.onclick=loadData;
+
+/* Buttons */
+saveBtn.onclick = ()=>saveRecord("create");
+clearBtn.onclick = clearForm;
+refreshBtn.onclick = loadData;
 
 loadData();
 
 </script>
-
 </body>
 </html>
