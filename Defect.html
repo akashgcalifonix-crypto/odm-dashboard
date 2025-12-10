@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Defect Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 12px; background: #f7fafc; }
+    .card { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    input, textarea, select, button { padding: 8px; margin: 6px 0; width: 100%; box-sizing: border-box; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+    .thumb { width: 60px; height: 50px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #0369a1; color: white; }
+    .btn { background: #0369a1; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    .btn.secondary { background: #6b7280; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; }
+    .modal .box { background: #fff; padding: 16px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow:auto; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Defect Dashboard</h1>
+
+    <!-- Form -->
+    <div>
+      <label>Date</label>
+      <input id="date" type="date">
+
+      <label>ODM</label>
+      <input id="odm">
+
+      <label>Model</label>
+      <input id="model">
+
+      <div class="row">
+        <div>
+          <label>PO</label>
+          <input id="po">
+        </div>
+        <div>
+          <label>Item</label>
+          <input id="item">
+        </div>
+      </div>
+
+      <label>Defect Details</label>
+      <textarea id="defectDetails" rows="2"></textarea>
+
+      <label>Defect Rate %</label>
+      <input id="defectRate" type="number">
+
+      <label>RCA</label>
+      <input id="rca">
+
+      <label>Remarks</label>
+      <textarea id="remarks" rows="2"></textarea>
+
+      <label>Prepared By</label>
+      <input id="preparedBy">
+
+      <label>Images (multiple)</label>
+      <input id="images" type="file" multiple accept="image/*">
+
+      <div class="row">
+        <button id="saveBtn" class="btn">Save (Online)</button>
+        <button id="clearBtn" class="btn secondary">Clear</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <input id="search" placeholder="Search ODM/Model/Defect">
+      <select id="filterMonth"><option value="">-- Month --</option></select>
+      <select id="filterODM"><option value="">-- ODM --</option></select>
+      <select id="filterModel"><option value="">-- Model --</option></select>
+      <button id="refreshBtn" class="btn secondary">Refresh</button>
+      <button id="exportExcel" class="btn">Export Excel</button>
+      <button id="exportPpt" class="btn">Download PPT</button>
+    </div>
+
+    <!-- Table -->
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Date</th><th>ODM</th><th>Model</th><th>PO</th><th>Item</th><th>Defect Details</th>
+          <th>Rate %</th><th>RCA</th><th>Remarks</th><th>Prepared By</th><th>Images</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="box">
+      <button onclick="closeModal()" class="btn secondary" style="float:right;">Close</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- PPT Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.11.0/pptxgen.min.js"></script>
+
+  <script>
+
+    /************************************************************
+     *  ✔ THIS IS YOUR FINAL WORKING APPS SCRIPT URL
+     ************************************************************/
+    const SCRIPT_URL =
+      "https://script.google.com/macros/s/AKfycbxzSUIi7P6sXV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
+
+
+    /************************************************************
+     *  HELPERS
+     ************************************************************/
+    function escapeHtml(s){
+      if (!s) return "";
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function readFilesDataURLs(files){
+      return Promise.all(Array.from(files||[]).map(f => new Promise((res, rej)=>{
+        const r=new FileReader();
+        r.onload=()=>res({name:f.name, dataUrl:r.result});
+        r.onerror=rej;
+        r.readAsDataURL(f);
+      })));
+    }
+
+    /************************************************************
+     *  SAVE RECORD
+     ************************************************************/
+    async function saveRecord(action, rowIndex=null){
+      const images = await readFilesDataURLs(document.getElementById("images").files);
+
+      const record = {
+        date: date.value,
+        odm: odm.value.trim(),
+        model: model.value.trim(),
+        po: po.value.trim(),
+        item: item.value.trim(),
+        defectDetails: defectDetails.value.trim(),
+        defectRate: defectRate.value.trim(),
+        rca: rca.value.trim(),
+        remarks: remarks.value.trim(),
+        preparedBy: preparedBy.value.trim(),
+        images: images
+      };
+
+      const payload = {action, record};
+      if(action === "update") payload.rowIndex = rowIndex;
+
+      const res = await fetch(SCRIPT_URL, {
+        method:"POST",
+        body:JSON.stringify(payload)
+      });
+
+      const j = await res.json();
+      if(j.status === "success"){
+        alert(action==="create" ? "Saved!" : "Updated!");
+        clearForm();
+        loadData();
+      } else {
+        alert("Error: " + j.message);
+      }
+    }
+
+    saveBtn.onclick = ()=> saveRecord("create");
+    clearBtn.onclick = clearForm;
+
+    function clearForm(){
+      [date,odm,model,po,item,defectDetails,defectRate,rca,remarks,preparedBy].forEach(x => x.value="");
+      images.value = "";
+      saveBtn.textContent = "Save (Online)";
+      saveBtn.onclick = ()=>saveRecord("create");
+    }
+
+    /************************************************************
+     *  LOAD DATA
+     ************************************************************/
+    async function loadData(){
+      try{
+        const res = await fetch(SCRIPT_URL);
+        const json = await res.json();
+
+        renderTable(json.rows);
+        setupFilters(json.rows);
+
+      } catch(err){
+        alert("Error loading data.\nIMPORTANT: Open HTML with Live Server, NOT file://");
+      }
+    }
+
+    /************************************************************
+     *  FILTER SETUP
+     ************************************************************/
+    function setupFilters(rows){
+      const monthSet = new Set();
+      const odmSet   = new Set();
+      const modelSet = new Set();
+
+      rows.forEach(r=>{
+        if(r.Date)  monthSet.add(r.Date.slice(0,7));
+        if(r.ODM)   odmSet.add(r.ODM);
+        if(r.Model) modelSet.add(r.Model);
+      });
+
+      filterMonth.innerHTML = "<option value=''>-- Month --</option>";
+      filterODM.innerHTML   = "<option value=''>-- ODM --</option>";
+      filterModel.innerHTML = "<option value=''>-- Model --</option>";
+
+      [...monthSet].sort().forEach(v => filterMonth.add(new Option(v,v)));
+      [...odmSet].sort().forEach(v => filterODM.add(new Option(v,v)));
+      [...modelSet].sort().forEach(v => filterModel.add(new Option(v,v)));
+    }
+
+    /************************************************************
+     *  RENDER TABLE
+     ************************************************************/
+    function renderTable(rows){
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "";
+
+      rows.forEach(r=>{
+        const imgs = (r.ImageURLs||"")
+          .split(";")
+          .map(x=>x.trim())
+          .filter(Boolean);
+
+        const imgHtml = imgs.length
+          ? imgs.map(u=>`<a href="${u}" target="_blank"><img src="${u}" class="thumb"></a>`).join(" ")
+          : "-";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml(r.Date)}</td>
+          <td>${escapeHtml(r.ODM)}</td>
+          <td>${escapeHtml(r.Model)}</td>
+          <td>${escapeHtml(r.PO)}</td>
+          <td>${escapeHtml(r.Item)}</td>
+          <td>${escapeHtml(r.DefectDetails)}</td>
+          <td>${escapeHtml(r.DefectRate)}</td>
+          <td>${escapeHtml(r.RCA)}</td>
+          <td>${escapeHtml(r.Remarks)}</td>
+          <td>${escapeHtml(r.PreparedBy)}</td>
+          <td>${imgHtml}</td>
+          <td>
+            <button class="btn secondary" onclick="editRecord(${r._rowIndex})">Edit</button>
+            <button class="btn" onclick="deleteRecord(${r._rowIndex})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /************************************************************
+     *  EDIT
+     ************************************************************/
+    async function editRecord(rowIndex){
+      const res = await fetch(SCRIPT_URL);
+      const json = await res.json();
+
+      const r = json.rows.find(x=>x._rowIndex === rowIndex);
+      if(!r) return alert("Record not found.");
+
+      date.value = r.Date;
+      odm.value = r.ODM;
+      model.value = r.Model;
+      po.value = r.PO;
+      item.value = r.Item;
+      defectDetails.value = r.DefectDetails;
+      defectRate.value = r.DefectRate;
+      rca.value = r.RCA;
+      remarks.value = r.Remarks;
+      preparedBy.value = r.PreparedBy;
+
+      saveBtn.textContent = "Update";
+      saveBtn.onclick = ()=>saveRecord("update", rowIndex);
+    }
+
+    /************************************************************
+     *  DELETE
+     ************************************************************/
+    async function deleteRecord(rowIndex){
+      if(!confirm("Delete this entry?")) return;
+
+      const res = await fetch(SCRIPT_URL, {
+        method:"POST",
+        body: JSON.stringify({action:"delete", rowIndex})
+      });
+
+      const json = await res.json();
+      if(json.status === "success"){
+        alert("Deleted!");
+        loadData();
+      } else {
+        alert("Delete failed");
+      }
+    }
+
+    refreshBtn.onclick = loadData;
+
+    /************************************************************
+     *  INIT
+     ************************************************************/
+    loadData();
+
+  </script>
+
+</body>
+</html>
