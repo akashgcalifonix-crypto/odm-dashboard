@@ -7,168 +7,176 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 12px; background: #f7fafc; }
     .card { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    input, textarea, select, button { padding: 8px; margin: 6px 0; width: 100%; box-sizing: border-box; }
+    input, textarea, button { padding: 8px; margin: 6px 0; width: 100%; box-sizing: border-box; }
     .row { display: flex; gap: 8px; }
     .row > * { flex: 1; }
-    .thumb { width: 60px; height: 50px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; cursor:pointer; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
     th { background: #0369a1; color: white; }
-    .btn { background: #0369a1; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    .btn { background: #0369a1; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; }
     .btn.secondary { background: #6b7280; }
-    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; }
-    .modal .box { background: #fff; padding: 16px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow:auto; }
+    .thumb { width: 60px; height: 50px; border-radius: 5px; object-fit: cover; cursor: pointer; }
+    .modal { position: fixed; top: 0; left: 0; right:0; bottom:0; background: rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; }
+    .modal .box { background:white; padding:20px; border-radius:8px; max-width:90%; max-height:90%; overflow:auto; text-align:center; }
   </style>
 </head>
+
 <body>
-  <div class="card">
-    <h1>Defect Dashboard</h1>
-    
-    <!-- Form -->
-    <div>
-      <label>Date</label>
-      <input id="date" type="date">
-      <label>ODM</label>
-      <input id="odm">
-      <label>Model</label>
-      <input id="model">
-      <div class="row">
-        <div><label>PO</label><input id="po"></div>
-        <div><label>Item</label><input id="item"></div>
-      </div>
-      <label>Defect Details</label>
-      <textarea id="defectDetails" rows="3"></textarea>
-      <label>Defect Rate %</label>
-      <input id="defectRate" type="number" step="0.01">
-      <label>RCA</label>
-      <input id="rca">
-      <label>Remarks</label>
-      <textarea id="remarks" rows="2"></textarea>
-      <label>Prepared By</label>
-      <input id="preparedBy">
-      <label>Images (multiple)</label>
-      <input id="images" type="file" accept="image/*" multiple>
-      <div class="row">
-        <button id="saveBtn" class="btn">Save (Online)</button>
-        <button id="clearBtn" class="btn secondary">Clear</button>
-      </div>
-    </div>
 
-    <!-- Filters -->
-    <div style="margin-top:16px;" class="filters">
-      <input id="search" placeholder="Search ODM/Model/Defect">
-      <button id="refreshBtn" class="btn secondary">Refresh</button>
-    </div>
+<div class="card">
+  <h2>Defect Dashboard</h2>
 
-    <!-- Table -->
-    <table id="dataTable">
-      <thead>
-        <tr>
-          <th>Date</th><th>ODM</th><th>Model</th><th>PO</th><th>Item</th>
-          <th>Defect Details</th><th>Rate %</th><th>RCA</th><th>Remarks</th>
-          <th>Prepared By</th><th>Images</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <label>Date</label>
+  <input id="date" type="date">
+
+  <label>ODM</label>
+  <input id="odm">
+
+  <label>Model</label>
+  <input id="model">
+
+  <div class="row">
+    <div><label>PO</label><input id="po"></div>
+    <div><label>Item</label><input id="item"></div>
   </div>
 
-  <!-- Modal -->
-  <div id="modal" class="modal">
-    <div class="box">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3>Preview</h3>
-        <button onclick="closeModal()" class="btn secondary">Close</button>
-      </div>
-      <div id="modalContent"></div>
-    </div>
+  <label>Defect Details</label>
+  <textarea id="defectDetails"></textarea>
+
+  <label>Defect Rate %</label>
+  <input id="defectRate" type="number">
+
+  <label>RCA</label>
+  <input id="rca">
+
+  <label>Remarks</label>
+  <textarea id="remarks"></textarea>
+
+  <label>Prepared By</label>
+  <input id="preparedBy">
+
+  <label>Images</label>
+  <input id="images" type="file" multiple accept="image/*">
+
+  <button class="btn" id="saveBtn">Save (Online)</button>
+  <button class="btn secondary" id="clearBtn">Clear</button>
+
+  <button style="margin-top:15px" class="btn secondary" id="refreshBtn">Refresh</button>
+
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>Date</th><th>ODM</th><th>Model</th><th>PO</th><th>Item</th>
+        <th>Defect Details</th><th>Rate%</th><th>RCA</th><th>Remarks</th>
+        <th>Prepared</th><th>Images</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+
+<!-- 🔥 IMAGE PREVIEW MODAL (Correct placement) -->
+<div id="modal" class="modal">
+  <div class="box">
+    <h3>Image Preview</h3>
+    <img id="modalImage" style="max-width:100%; border-radius:8px;">
+    <br><br>
+    <button class="btn" id="downloadPdfBtn">Download PDF</button>
+    <button class="btn secondary" onclick="closeModal()">Close</button>
   </div>
+</div>
 
-  <script>
 
-    /* -----------------------------------------
-        CORRECT SCRIPT URL (Do not change)
-    ----------------------------------------- */
-    const SCRIPT_URL = 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+
+const SCRIPT_URL = 
  "https://script.google.com/macros/s/AKfycbxzSUli7P6SxV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
 
-    function escapeHtml(s){
-      if (s === null || s === undefined) return "";
-      if (typeof s !== "string") {
-        try { s = JSON.stringify(s); } catch(e){ s = String(s); }
-      }
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
 
-    function openPreview(url){
-      document.getElementById("modalContent").innerHTML =
-        `<img src="${escapeHtml(url)}" style="width:100%;border-radius:8px;">`;
-      document.getElementById("modal").style.display = "flex";
-    }
+function escapeHtml(s){
+  if(!s) return "";
+  return String(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;");
+}
 
-    function closeModal(){ document.getElementById("modal").style.display = "none"; }
 
-    function readFilesDataURLs(files){
-      return Promise.all(Array.from(files).map(f => new Promise((resolve, reject)=>{
-        const r = new FileReader();
-        r.onload = ()=>resolve({name:f.name, dataUrl:r.result});
-        r.onerror = reject;
-        r.readAsDataURL(f);
-      })));
-    }
+function readFilesDataURLs(files){
+  return Promise.all([...files].map(file => new Promise(res=>{
+      const fr = new FileReader();
+      fr.onload = ()=>res({name:file.name, dataUrl:fr.result});
+      fr.readAsDataURL(file);
+  })));
+}
 
-    async function saveRecord(action, rowIndex=null){
-      const images = await readFilesDataURLs(document.getElementById("images").files);
-      const record = {
-        date: date.value, odm: odm.value.trim(), model: model.value.trim(),
-        po: po.value.trim(), item: item.value.trim(),
-        defectDetails: defectDetails.value.trim(),
-        defectRate: defectRate.value.trim(),
-        rca: rca.value.trim(), remarks: remarks.value.trim(),
-        preparedBy: preparedBy.value.trim(),
-        images: images
-      };
 
-      const payload = { action, record };
-      if(action==="update") payload.rowIndex = rowIndex;
+// SAVE / UPDATE
+async function saveRecord(action="create", rowIndex=null){
+  const images = await readFilesDataURLs(images.files);
 
-      const res = await fetch(SCRIPT_URL, {method:"POST", body:JSON.stringify(payload)});
-      const j = await res.json();
+  let record = {
+    date: date.value,
+    odm: odm.value,
+    model: model.value,
+    po: po.value,
+    item: item.value,
+    defectDetails: defectDetails.value,
+    defectRate: defectRate.value,
+    rca: rca.value,
+    remarks: remarks.value,
+    preparedBy: preparedBy.value,
+    images: images
+  };
 
-      if(j.status==="success"){ alert("Saved"); loadData(); clearForm(); }
-      else alert("Failed: " + j.message);
-    }
+  let payload = { action, record };
+  if(action === "update") payload.rowIndex = rowIndex;
 
-    document.getElementById("saveBtn").onclick = ()=> saveRecord("create");
-    document.getElementById("clearBtn").onclick = clearForm;
-    document.getElementById("refreshBtn").onclick = loadData;
+  const res = await fetch(SCRIPT_URL, {
+    method:"POST",
+    body: JSON.stringify(payload)
+  });
 
-    function clearForm(){
-      ["date","odm","model","po","item","defectDetails","defectRate","rca","remarks","preparedBy"]
-      .forEach(id=>document.getElementById(id).value="");
-      document.getElementById("images").value = "";
-      saveBtn.textContent = "Save (Online)";
-      saveBtn.onclick = ()=>saveRecord("create");
-    }
+  const j = await res.json();
+  if(j.status === "success"){
+    alert("Saved");
+    clearForm();
+    loadData();
+  } else {
+    alert("Failed: " + j.message);
+  }
+}
 
-    function renderTable(rows){
+
+// CLEAR FORM
+function clearForm(){
+  ["date","odm","model","po","item","defectDetails","defectRate","rca","remarks","preparedBy"]
+  .forEach(id => document.getElementById(id).value = "");
+  images.value = "";
+  saveBtn.textContent = "Save (Online)";
+  saveBtn.onclick = ()=>saveRecord("create");
+}
+
+
+// RENDER TABLE
+function renderTable(rows){
   const tbody = document.querySelector("#dataTable tbody");
   tbody.innerHTML = "";
 
   rows.forEach(r=>{
-    const imgs = (r.ImageURLs || "")
-        .split(";")
-        .map(x => x.trim())
-        .filter(Boolean);
+    let imgs = (r.ImageURLs || "")
+      .split(";")
+      .map(x=>x.trim())
+      .filter(Boolean);
 
-    const imgHtml = imgs.length
-        ? imgs.map(u => `
-            <img src="${u}" class="thumb" onclick="openPreview('${u}')">
-          `).join("")
-        : "-";
+    let imgHtml = imgs.length
+      ? imgs.map(u => `<img src="${u}" class="thumb" onclick="openPreview('${u}')">`).join("")
+      : "-";
 
-    const tr = document.createElement("tr");
+    let tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${escapeHtml(r.Date)}</td>
       <td>${escapeHtml(r.ODM)}</td>
@@ -184,106 +192,93 @@
       <td>
         <button class="btn secondary" onclick="editRecord(${r._rowIndex})">Edit</button>
         <button class="btn" onclick="deleteRecord(${r._rowIndex})">Delete</button>
-      </td>
-    `;
+      </td>`;
     tbody.appendChild(tr);
   });
 }
-    async function loadData(){
-      try{
-        const res = await fetch(SCRIPT_URL);
-        const j = await res.json();
-        renderTable(j.rows);
-      }catch(e){
-        alert("Error loading data: " + e);
-      }
-    }
 
-    async function editRecord(rowIndex){
-      const res = await fetch(SCRIPT_URL);
-      const j = await res.json();
-      const r = j.rows.find(x=>x._rowIndex==rowIndex);
-      if(!r) return alert("Record not found");
 
-      date.value = r.Date;
-      odm.value = r.ODM;
-      model.value = r.Model;
-      po.value = r.PO;
-      item.value = r.Item;
-      defectDetails.value = r.DefectDetails;
-      defectRate.value = r.DefectRate;
-      rca.value = r.RCA;
-      remarks.value = r.Remarks;
-      preparedBy.value = r.PreparedBy;
+// LOAD DATA
+async function loadData(){
+  const res = await fetch(SCRIPT_URL);
+  const j = await res.json();
+  renderTable(j.rows);
+}
 
-      saveBtn.textContent = "Update";
-      saveBtn.onclick = ()=> saveRecord("update", rowIndex);
-    }
 
-    async function deleteRecord(rowIndex){
-      if(!confirm("Delete this record?")) return;
-      const res = await fetch(SCRIPT_URL, {
-        method:"POST",
-        body:JSON.stringify({action:"delete", rowIndex})
-      });
-      const j = await res.json();
-      if(j.status==="success"){ alert("Deleted"); loadData(); }
-      else alert("Failed");
-    }
-<!-- IMAGE PREVIEW MODAL -->
-<div id="modal" class="modal" style="display:none;">
-  <div class="box">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <h3>Image Preview</h3>
-      <button onclick="closeModal()" class="btn secondary">Close</button>
-    </div>
+// EDIT RECORD
+async function editRecord(rowIndex){
+  const res = await fetch(SCRIPT_URL);
+  const j = await res.json();
+  const r = j.rows.find(x=>x._rowIndex == rowIndex);
 
-    <div id="modalContent" style="margin-top:12px;text-align:center;"></div>
+  date.value = r.Date;
+  odm.value = r.ODM;
+  model.value = r.Model;
+  po.value = r.PO;
+  item.value = r.Item;
+  defectDetails.value = r.DefectDetails;
+  defectRate.value = r.DefectRate;
+  rca.value = r.RCA;
+  remarks.value = r.Remarks;
+  preparedBy.value = r.PreparedBy;
 
-    <button id="downloadPdfBtn" class="btn" style="margin-top:12px;">
-      Download PDF
-    </button>
-  </div>
-</div>
+  saveBtn.textContent = "Update";
+  saveBtn.onclick = ()=>saveRecord("update", rowIndex);
+}
+
+
+// DELETE RECORD
+async function deleteRecord(rowIndex){
+  if(!confirm("Delete record?")) return;
+
+  const res = await fetch(SCRIPT_URL, {
+    method:"POST",
+    body: JSON.stringify({action:"delete", rowIndex})
+  });
+
+  const j = await res.json();
+  if(j.status === "success"){
+    alert("Deleted");
+    loadData();
+  }
+}
+
+
+// PREVIEW
 function openPreview(url){
-  const box = document.getElementById("modalContent");
-
-  box.innerHTML = `
-      <img id="previewImage" src="${url}" 
-           style="max-width:100%;border-radius:8px;">
-  `;
-
+  document.getElementById("modalImage").src = url;
   document.getElementById("modal").style.display = "flex";
 
-  // PDF Download button event
-  document.getElementById("downloadPdfBtn").onclick = () => downloadImagePDF(url);
+  document.getElementById("downloadPdfBtn").onclick = () => downloadPDF(url);
 }
 
 function closeModal(){
   document.getElementById("modal").style.display = "none";
 }
-function downloadImagePDF(imgUrl){
-    const { jsPDF } = window.jspdf;
 
-    const pdf = new jsPDF("p", "mm", "a4");
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = imgUrl;
+// PDF DOWNLOAD
+function downloadPDF(imgUrl){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
 
-    img.onload = function () {
-        let width = pdf.internal.pageSize.getWidth();
-        let height = (img.height * width) / img.width;
+  let img = new Image();
+  img.src = imgUrl;
 
-        pdf.addImage(img, "JPEG", 0, 10, width, height);
-        pdf.save("Defect_Image.pdf");
-    };
+  img.onload = function(){
+    pdf.addImage(img, "JPEG", 10, 10, 180, 160);
+    pdf.save("Defect_Image.pdf");
+  };
 }
 
-    loadData();
+saveBtn.onclick = ()=>saveRecord("create");
+clearBtn.onclick = clearForm;
+refreshBtn.onclick = loadData;
 
-  </script>
+loadData();
+
+</script>
 
 </body>
 </html>
-
