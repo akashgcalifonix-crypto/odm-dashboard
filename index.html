@@ -16,8 +16,8 @@
     .btn { background: #0369a1; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; }
     .btn.secondary { background: #6b7280; }
     .thumb { width: 60px; height: 50px; border-radius: 5px; object-fit: cover; cursor: pointer; }
-    .modal { position: fixed; top: 0; left: 0; right:0; bottom:0; background: rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; }
-    .modal .box { background:white; padding:20px; border-radius:8px; max-width:90%; max-height:90%; overflow:auto; text-align:center; }
+    .modal { position: fixed; top:0; left:0; right:0; bottom:0; display:none; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+    .modal .box { background:white; padding:20px; border-radius:8px; max-width:90%; max-height:90%; text-align:center; }
   </style>
 </head>
 
@@ -56,12 +56,12 @@
   <input id="preparedBy">
 
   <label>Images</label>
-  <input id="images" type="file" multiple accept="image/*">
+  <input id="images" type="file" accept="image/*" multiple>
 
   <button class="btn" id="saveBtn">Save (Online)</button>
   <button class="btn secondary" id="clearBtn">Clear</button>
 
-  <button style="margin-top:15px" class="btn secondary" id="refreshBtn">Refresh</button>
+  <button class="btn secondary" id="refreshBtn" style="margin-top:10px;">Refresh</button>
 
   <table id="dataTable">
     <thead>
@@ -75,12 +75,11 @@
   </table>
 </div>
 
-
-<!-- 🔥 IMAGE PREVIEW MODAL (Correct placement) -->
+<!-- IMAGE PREVIEW MODAL -->
 <div id="modal" class="modal">
   <div class="box">
     <h3>Image Preview</h3>
-    <img id="modalImage" style="max-width:100%; border-radius:8px;">
+    <img id="modalImage" style="max-width:100%;border-radius:8px;">
     <br><br>
     <button class="btn" id="downloadPdfBtn">Download PDF</button>
     <button class="btn secondary" onclick="closeModal()">Close</button>
@@ -92,33 +91,30 @@
 
 <script>
 
-const SCRIPT_URL = 
+const SCRIPT_URL =
  "https://script.google.com/macros/s/AKfycbxzSUli7P6SxV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
 
 
+// Escape text
 function escapeHtml(s){
   if(!s) return "";
-  return String(s)
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;");
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-
+// Read image files
 function readFilesDataURLs(files){
   return Promise.all([...files].map(file => new Promise(res=>{
-      const fr = new FileReader();
-      fr.onload = ()=>res({name:file.name, dataUrl:fr.result});
-      fr.readAsDataURL(file);
+    let fr = new FileReader();
+    fr.onload = ()=>res({name:file.name, dataUrl:fr.result});
+    fr.readAsDataURL(file);
   })));
 }
 
-
-// SAVE / UPDATE
+// Save or update
 async function saveRecord(action="create", rowIndex=null){
-  const images = await readFilesDataURLs(images.files);
+  const imagesData = await readFilesDataURLs(images.files);
 
-  let record = {
+  const record = {
     date: date.value,
     odm: odm.value,
     model: model.value,
@@ -129,19 +125,16 @@ async function saveRecord(action="create", rowIndex=null){
     rca: rca.value,
     remarks: remarks.value,
     preparedBy: preparedBy.value,
-    images: images
+    images: imagesData
   };
 
-  let payload = { action, record };
-  if(action === "update") payload.rowIndex = rowIndex;
+  const payload = { action, record };
+  if(action==="update") payload.rowIndex = rowIndex;
 
-  const res = await fetch(SCRIPT_URL, {
-    method:"POST",
-    body: JSON.stringify(payload)
-  });
-
+  const res = await fetch(SCRIPT_URL, { method:"POST", body:JSON.stringify(payload) });
   const j = await res.json();
-  if(j.status === "success"){
+
+  if(j.status==="success"){
     alert("Saved");
     clearForm();
     loadData();
@@ -150,34 +143,26 @@ async function saveRecord(action="create", rowIndex=null){
   }
 }
 
-
-// CLEAR FORM
+// Clear form
 function clearForm(){
   ["date","odm","model","po","item","defectDetails","defectRate","rca","remarks","preparedBy"]
-  .forEach(id => document.getElementById(id).value = "");
-  images.value = "";
-  saveBtn.textContent = "Save (Online)";
-  saveBtn.onclick = ()=>saveRecord("create");
+  .forEach(id=>document.getElementById(id).value="");
+  images.value="";
+  saveBtn.textContent="Save (Online)";
+  saveBtn.onclick=()=>saveRecord("create");
 }
 
-
-// RENDER TABLE
+// Render table
 function renderTable(rows){
-  const tbody = document.querySelector("#dataTable tbody");
-  tbody.innerHTML = "";
+  const tbody=document.querySelector("#dataTable tbody");
+  tbody.innerHTML="";
 
   rows.forEach(r=>{
-    let imgs = (r.ImageURLs || "")
-      .split(";")
-      .map(x=>x.trim())
-      .filter(Boolean);
+    const imgs=(r.ImageURLs||"").split(";").map(x=>x.trim()).filter(Boolean);
+    const imgHtml = imgs.length ? imgs.map(u=>`<img src="${u}" class="thumb" onclick="openPreview('${u}')">`).join("") : "-";
 
-    let imgHtml = imgs.length
-      ? imgs.map(u => `<img src="${u}" class="thumb" onclick="openPreview('${u}')">`).join("")
-      : "-";
-
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
       <td>${escapeHtml(r.Date)}</td>
       <td>${escapeHtml(r.ODM)}</td>
       <td>${escapeHtml(r.Model)}</td>
@@ -197,20 +182,18 @@ function renderTable(rows){
   });
 }
 
-
-// LOAD DATA
+// Load data
 async function loadData(){
   const res = await fetch(SCRIPT_URL);
   const j = await res.json();
   renderTable(j.rows);
 }
 
-
-// EDIT RECORD
+// Edit record
 async function editRecord(rowIndex){
   const res = await fetch(SCRIPT_URL);
   const j = await res.json();
-  const r = j.rows.find(x=>x._rowIndex == rowIndex);
+  const r = j.rows.find(x=>x._rowIndex==rowIndex);
 
   date.value = r.Date;
   odm.value = r.ODM;
@@ -223,42 +206,40 @@ async function editRecord(rowIndex){
   remarks.value = r.Remarks;
   preparedBy.value = r.PreparedBy;
 
-  saveBtn.textContent = "Update";
-  saveBtn.onclick = ()=>saveRecord("update", rowIndex);
+  saveBtn.textContent="Update";
+  saveBtn.onclick=()=>saveRecord("update", rowIndex);
 }
 
-
-// DELETE RECORD
+// Delete record
 async function deleteRecord(rowIndex){
-  if(!confirm("Delete record?")) return;
+  if(!confirm("Delete?")) return;
 
   const res = await fetch(SCRIPT_URL, {
     method:"POST",
-    body: JSON.stringify({action:"delete", rowIndex})
+    body:JSON.stringify({action:"delete", rowIndex})
   });
 
   const j = await res.json();
-  if(j.status === "success"){
+  if(j.status==="success"){
     alert("Deleted");
     loadData();
   }
 }
 
 
-// PREVIEW
+// Image Preview Modal
 function openPreview(url){
-  document.getElementById("modalImage").src = url;
-  document.getElementById("modal").style.display = "flex";
+  modalImage.src = url;
+  modal.style.display = "flex";
 
-  document.getElementById("downloadPdfBtn").onclick = () => downloadPDF(url);
+  downloadPdfBtn.onclick = ()=> downloadPDF(url);
 }
 
 function closeModal(){
-  document.getElementById("modal").style.display = "none";
+  modal.style.display = "none";
 }
 
-
-// PDF DOWNLOAD
+// Download PDF
 function downloadPDF(imgUrl){
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF();
@@ -267,11 +248,12 @@ function downloadPDF(imgUrl){
   img.src = imgUrl;
 
   img.onload = function(){
-    pdf.addImage(img, "JPEG", 10, 10, 180, 160);
-    pdf.save("Defect_Image.pdf");
+    pdf.addImage(img, "JPEG", 10, 10, 180, 150);
+    pdf.save("Image.pdf");
   };
 }
 
+// Event listeners
 saveBtn.onclick = ()=>saveRecord("create");
 clearBtn.onclick = clearForm;
 refreshBtn.onclick = loadData;
