@@ -4,26 +4,32 @@
   <meta charset="utf-8"/>
   <title>Defect Dashboard & PDF Report</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  
+  <!-- html2pdf Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; }
     .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1000px; margin: auto; }
     h2 { color: #0369a1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
     label { font-weight: bold; font-size: 12px; display: block; margin-bottom: 5px; }
-    input, textarea { padding: 8px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    input, textarea, select { padding: 8px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    
     .btn { background: #0369a1; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn:hover { background: #025686; }
     .btn.secondary { background: #6b7280; }
     .btn.danger { background: #dc3545; }
     .btn.success { background: #28a745; }
+    
     table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; font-size: 13px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle; }
     th { background: #0369a1; color: white; }
-    .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
     
-    /* Modal */
+    .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
+
+    /* Modal Styles */
     .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index: 1000; }
     .modal-content { background:white; width: 800px; max-width: 95%; height: 90vh; border-radius:8px; display: flex; flex-direction: column; }
     .modal-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
@@ -114,8 +120,8 @@
 </div>
 
 <script>
-// ⚠️ PASTE NEW DEPLOYMENT URL HERE
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6vmVPHgK---h3iFC-UZYa4V2HAmGXyTVdicJ9EX2h4skEuWwvL_kEUMxfR74DQR4zCA/exec";
+// ⚠️ YAHAN APNA SCRIPT URL PASTE KAREIN
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxCTD4QteSdiGLz8s1Zc9NvvQbxS_HiL3-7kl7vxUfy0lsbVDVIaUgNiuimRudPCHc8NA/exec";
 
 let allData = [];
 
@@ -130,7 +136,7 @@ function readFilesAndCompress(files) {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        // Resize to reduce size for upload
+        // Reduce size for faster upload
         let w = img.width, h = img.height;
         if(w > 800) { h *= 800/w; w = 800; }
         canvas.width = w; canvas.height = h;
@@ -143,10 +149,10 @@ function readFilesAndCompress(files) {
   })));
 }
 
-// --- SAVE ---
+// --- SAVE FUNCTION ---
 async function saveRecord(){
   const btn = document.getElementById('saveBtn');
-  btn.innerText = "Uploading to Drive..."; btn.disabled = true;
+  btn.innerText = "Uploading..."; btn.disabled = true;
 
   const fileInput = document.getElementById('images');
   let imgs = [];
@@ -157,11 +163,10 @@ async function saveRecord(){
   const rowIndex = document.getElementById('editRowIndex').value;
   const action = rowIndex ? "update" : "create";
 
-  // If update and no new image, keep old
+  // Edit mode logic: Keep old images if no new ones are selected
   if(action === "update" && imgs.length === 0){
       let oldRow = allData.find(r => r._rowIndex == rowIndex);
       if(oldRow && oldRow.ImageURLs) {
-          // Pass old URLs as special objects
           imgs = oldRow.ImageURLs.split(" || ").map(url => ({ data: url }));
       }
   }
@@ -177,19 +182,18 @@ async function saveRecord(){
     rca: document.getElementById('rca').value,
     remarks: "", 
     preparedBy: document.getElementById('preparedBy').value,
-    images: imgs // Sending array of {name, data}
+    images: imgs 
   };
 
   try {
-      // JSON.stringify can fail if payload is huge, resizing above prevents this
       let res = await fetch(SCRIPT_URL, { method:"POST", body: JSON.stringify({ action, record, rowIndex }) });
       let j = await res.json();
       if(j.status==="success"){
-        alert("✅ Saved to Drive & Sheet Successfully!");
+        alert("✅ Saved Successfully!");
         clearForm();
         loadData();
       } else { alert("Failed: "+j.message); }
-  } catch(e){ console.error(e); alert("Error saving. File might be too big."); }
+  } catch(e){ console.error(e); alert("Error saving."); }
   
   btn.innerText = "Save Record"; btn.disabled = false;
 }
@@ -200,8 +204,9 @@ function clearForm(){
   document.getElementById('editRowIndex').value = "";
 }
 
+// --- LOAD DATA ---
 async function loadData(){
-  document.querySelector("#dataTable tbody").innerHTML = "<tr><td colspan='7'>Loading data from Sheet...</td></tr>";
+  document.querySelector("#dataTable tbody").innerHTML = "<tr><td colspan='7'>Loading...</td></tr>";
   try {
       let res = await fetch(SCRIPT_URL);
       let j = await res.json();
@@ -215,10 +220,9 @@ function renderTable(rows){
   tbody.innerHTML = "";
   rows.forEach((r, idx) => {
     let imgList = (r.ImageURLs || "").split(" || ").filter(Boolean);
-    // Use first image as thumb
     let thumb = imgList.length ? `<img src="${imgList[0]}" class="thumb" onclick='openPreview(${JSON.stringify(r)})'>` : '<span style="color:#ccc">No Img</span>';
 
-    // Format Date properly
+    // Date clean up (remove apostrophe if exists)
     let cleanDate = r.Date ? r.Date.replace("'", "") : "";
 
     let tr = document.createElement("tr");
@@ -242,7 +246,7 @@ function renderTable(rows){
 function editRecord(rowIndex){
   let r = allData.find(x => x._rowIndex == rowIndex);
   if(!r) return;
-  document.getElementById('date').value = r.Date.replace("'", ""); // Clean date
+  document.getElementById('date').value = r.Date.replace("'", "");
   document.getElementById('odm').value = r.ODM;
   document.getElementById('model').value = r.Model;
   document.getElementById('po').value = r.PO;
@@ -262,8 +266,9 @@ async function deleteRecord(rowIndex){
   loadData();
 }
 
+// --- PREVIEW FUNCTION (Fixed) ---
 function openPreview(r){
-    document.getElementById('rep_date').innerText = r.Date.replace("'", "") || "-";
+    document.getElementById('rep_date').innerText = (r.Date || "").replace("'", "") || "-";
     document.getElementById('rep_prep').innerText = r.PreparedBy || "-";
     document.getElementById('rep_odm').innerText = r.ODM || "-";
     document.getElementById('rep_model').innerText = r.Model || "-";
@@ -275,18 +280,25 @@ function openPreview(r){
 
     const imgContainer = document.getElementById('rep_images');
     imgContainer.innerHTML = "";
+    
+    // Process Images
     let imgs = (r.ImageURLs || "").split(" || ").filter(Boolean);
     
     if(imgs.length > 0){
         imgs.forEach(url => {
-            // Using a proxy or direct link depending on access
             let img = document.createElement('img');
-            img.crossOrigin = "Anonymous"; // Try to help PDF rendering
+            // ✅ IMPORTANT: This helps html2canvas access the image
+            img.crossOrigin = "Anonymous"; 
             img.src = url;
             img.className = 'report-img';
+            img.onload = function() { console.log("Image Loaded"); };
+            img.onerror = function() { console.log("Image Error"); this.style.display='none'; };
             imgContainer.appendChild(img);
         });
-    } else { imgContainer.innerHTML = "<p>No Images</p>"; }
+    } else { 
+        imgContainer.innerHTML = "<p>No Images</p>"; 
+    }
+    
     document.getElementById('modal').style.display = 'flex';
 }
 
@@ -295,13 +307,16 @@ function closeModal(){ document.getElementById('modal').style.display = 'none'; 
 function downloadPDF(){
     const element = document.getElementById('printArea');
     const modelName = document.getElementById('rep_model').innerText;
-    html2pdf().set({
+    
+    const opt = {
         margin: 0.5,
         filename: `Defect_Report_${modelName}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true }, // useCORS important for Drive images
+        html2canvas: { scale: 2, useCORS: true }, // ✅ useCORS is Must
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    }).from(element).save();
+    };
+
+    html2pdf().set(opt).from(element).save();
 }
 
 document.getElementById('saveBtn').onclick = saveRecord;
