@@ -2,291 +2,355 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Defect Dashboard</title>
+  <title>Defect Dashboard & PDF Report</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  
+  <!-- html2pdf Library for better PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; margin: 12px; background: #f7fafc; }
-    .card { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    input, textarea, button { padding: 8px; margin: 6px 0; width: 100%; box-sizing: border-box; }
-    .row { display: flex; gap: 10px; }
-    .row > * { flex: 1; }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
-    th { background: #0369a1; color: white; }
-    .btn { background: #0369a1; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1000px; margin: auto; }
+    h2 { color: #0369a1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    
+    /* Form Grid */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+    label { font-weight: bold; font-size: 12px; display: block; margin-bottom: 5px; }
+    input, textarea, select { padding: 8px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    
+    /* Buttons */
+    .btn { background: #0369a1; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn:hover { background: #025686; }
     .btn.secondary { background: #6b7280; }
-    .thumb { width: 60px; height: 50px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+    .btn.danger { background: #dc3545; }
+    .btn.success { background: #28a745; }
+    
+    /* Table */
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle; }
+    th { background: #0369a1; color: white; }
+    
+    .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
 
-    /* Modal */
+    /* Modal (Popup) Styles */
     .modal { 
         position: fixed; top:0; left:0; right:0; bottom:0; 
-        background: rgba(0,0,0,0.5); 
-        display:none; justify-content:center; align-items:center;
+        background: rgba(0,0,0,0.6); 
+        display:none; justify-content:center; align-items:center; z-index: 1000;
     }
-    .modal .box { 
-        background:white; padding:20px; border-radius:8px; 
-        max-width:90%; max-height:90%; overflow:auto; text-align:center;
+    .modal-content { 
+        background:white; width: 800px; max-width: 95%; height: 90vh; 
+        border-radius:8px; display: flex; flex-direction: column;
     }
+    .modal-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; background: #f9f9f9; }
+    .modal-footer { padding: 15px; border-top: 1px solid #ddd; text-align: right; background: #fff; border-radius: 0 0 8px 8px;}
+
+    /* PDF Report Layout (Inside Modal) */
+    .report-container {
+        background: white; padding: 30px; border: 1px solid #ddd; 
+        box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+    .report-title { text-align: center; color: #0369a1; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+    .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .report-table td { padding: 8px; border: 1px solid #ccc; }
+    .report-label { background: #f0f8ff; font-weight: bold; width: 30%; }
+    .report-img-grid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
+    .report-img { max-width: 200px; max-height: 200px; border: 1px solid #ddd; padding: 5px; }
+
   </style>
 </head>
 
 <body>
 
 <div class="card">
-  <h2>Defect Dashboard</h2>
+  <h2>Defect Dashboard & Data Entry</h2>
 
-  <label>Date</label>
-  <input id="date" type="date">
+  <input type="hidden" id="editRowIndex">
 
-  <label>ODM</label>
-  <input id="odm">
-
-  <label>Model</label>
-  <input id="model">
-
-  <div class="row">
-    <div><label>PO</label><input id="po"></div>
-    <div><label>Item</label><input id="item"></div>
+  <div class="form-grid">
+      <div><label>Date</label><input id="date" type="date"></div>
+      <div><label>ODM</label><input id="odm"></div>
+      <div><label>Model</label><input id="model"></div>
+      <div><label>PO Number</label><input id="po"></div>
   </div>
 
-  <label>Defect Details</label>
-  <textarea id="defectDetails"></textarea>
+  <div class="form-grid">
+      <div><label>Item Name</label><input id="item"></div>
+      <div><label>Defect Rate %</label><input id="defectRate" type="number" placeholder="%"></div>
+      <div><label>Prepared By</label><input id="preparedBy"></div>
+      <div><label>Upload Images</label><input id="images" type="file" accept="image/*" multiple></div>
+  </div>
 
-  <label>Defect Rate %</label>
-  <input id="defectRate" type="number">
+  <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+      <div><label>Defect Details</label><textarea id="defectDetails" rows="3"></textarea></div>
+      <div><label>RCA / Remarks</label><textarea id="rca" rows="3"></textarea></div>
+  </div>
 
-  <label>RCA</label>
-  <input id="rca">
-
-  <label>Remarks</label>
-  <textarea id="remarks"></textarea>
-
-  <label>Prepared By</label>
-  <input id="preparedBy">
-
-  <label>Images</label>
-  <input id="images" type="file" accept="image/*" multiple>
-
-  <button id="saveBtn" class="btn">Save (Online)</button>
-  <button id="clearBtn" class="btn secondary">Clear</button>
-
-  <button id="refreshBtn" class="btn secondary" style="margin-top:15px;">Refresh</button>
+  <div style="margin-top:10px;">
+      <button id="saveBtn" class="btn">Save Record</button>
+      <button id="clearBtn" class="btn secondary">Clear Form</button>
+      <button id="refreshBtn" class="btn secondary" style="float:right">Refresh List</button>
+  </div>
 
   <table id="dataTable">
     <thead>
       <tr>
-        <th>Date</th><th>ODM</th><th>Model</th><th>PO</th><th>Item</th>
-        <th>Defect Details</th><th>Rate%</th><th>RCA</th><th>Remarks</th>
-        <th>Prepared</th><th>Images</th><th>Actions</th>
+        <th>Date</th><th>Model</th><th>Defect</th><th>Rate%</th><th>RCA</th>
+        <th>Image</th><th>Actions</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
-
-<!-- IMAGE PREVIEW MODAL -->
+<!-- PREVIEW & PDF MODAL -->
 <div id="modal" class="modal">
-  <div class="box">
-    <h3>Image Preview</h3>
-    <img id="modalImage" style="max-width:100%; border-radius:8px;">
-    <br><br>
-    <button class="btn" id="downloadPdfBtn">Download PDF</button>
-    <button class="btn secondary" onclick="closeModal()">Close</button>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 style="margin:0">📄 Report Preview</h3>
+      <button onclick="closeModal()" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- This area will be printed to PDF -->
+      <div id="printArea" class="report-container">
+          <h2 class="report-title">Defect Analysis Report</h2>
+          
+          <table class="report-table">
+              <tr>
+                  <td class="report-label">Date</td><td id="rep_date"></td>
+                  <td class="report-label">Prepared By</td><td id="rep_prep"></td>
+              </tr>
+              <tr>
+                  <td class="report-label">ODM</td><td id="rep_odm"></td>
+                  <td class="report-label">Model</td><td id="rep_model"></td>
+              </tr>
+              <tr>
+                  <td class="report-label">PO Number</td><td id="rep_po"></td>
+                  <td class="report-label">Item</td><td id="rep_item"></td>
+              </tr>
+          </table>
+
+          <table class="report-table">
+              <tr>
+                  <td class="report-label">Defect Details</td>
+                  <td id="rep_desc"></td>
+              </tr>
+              <tr>
+                  <td class="report-label">Defect Rate</td>
+                  <td id="rep_rate" style="font-weight:bold; color:red;"></td>
+              </tr>
+              <tr>
+                  <td class="report-label">RCA / Remarks</td>
+                  <td id="rep_rca"></td>
+              </tr>
+          </table>
+
+          <div style="margin-top:20px; border-top:2px solid #eee; padding-top:10px;">
+              <h4 style="margin:0 0 10px 0;">Defect Images:</h4>
+              <div id="rep_images" class="report-img-grid"></div>
+          </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn secondary" onclick="closeModal()">Close</button>
+        <button class="btn success" onclick="downloadPDF()">⬇ Download PDF Report</button>
+    </div>
   </div>
 </div>
 
-
-<!-- jsPDF CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <script>
 
-const SCRIPT_URL = 
- "https://script.google.com/macros/s/AKfycbxzSUli7P6SxV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
+// ⚠️ APNA GOOGLE APPS SCRIPT URL YAHAN PASTE KAREIN
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzSUli7P6SxV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
 
+let allData = [];
 
-/* Escape text safely */
-function escapeHtml(s){
-  if(!s) return "";
-  return String(s)
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;");
-}
+// --- UTILS ---
+function escapeHtml(s){ return s ? String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""; }
 
-
-/* Read Images */
 function readFilesDataURLs(files){
   return Promise.all([...files].map(file => new Promise(res=>{
     const fr = new FileReader();
-    fr.onload = ()=>res({name:file.name, dataUrl:fr.result});
+    fr.onload = ()=>res(fr.result); // Only store Base64
     fr.readAsDataURL(file);
   })));
 }
 
+// --- CRUD OPERATIONS ---
+async function saveRecord(){
+  const btn = document.getElementById('saveBtn');
+  btn.innerText = "Saving..."; btn.disabled = true;
 
-/* Save / Update Record */
-async function saveRecord(action="create", rowIndex=null){
-  const imgs = await readFilesDataURLs(images.files);
+  const imgs = await readFilesDataURLs(document.getElementById('images').files);
+  const rowIndex = document.getElementById('editRowIndex').value;
+  const action = rowIndex ? "update" : "create";
+
+  // Use existing images if editing and no new images uploaded
+  let finalImages = imgs.join(" || ");
+  if(action === "update" && imgs.length === 0){
+      // Find original row to keep old images
+      let oldRow = allData.find(r => r._rowIndex == rowIndex);
+      if(oldRow) finalImages = oldRow.ImageURLs;
+  }
 
   let record = {
-    date: date.value,
-    odm: odm.value,
-    model: model.value,
-    po: po.value,
-    item: item.value,
-    defectDetails: defectDetails.value,
-    defectRate: defectRate.value,
-    rca: rca.value,
-    remarks: remarks.value,
-    preparedBy: preparedBy.value,
-    images: imgs
+    date: document.getElementById('date').value,
+    odm: document.getElementById('odm').value,
+    model: document.getElementById('model').value,
+    po: document.getElementById('po').value,
+    item: document.getElementById('item').value,
+    defectDetails: document.getElementById('defectDetails').value,
+    defectRate: document.getElementById('defectRate').value,
+    rca: document.getElementById('rca').value, // merged rca and remarks for simplicity
+    remarks: "", 
+    preparedBy: document.getElementById('preparedBy').value,
+    images: finalImages
   };
 
-  let payload = { action, record };
-  if(action==="update") payload.rowIndex = rowIndex;
+  let payload = { action, record, rowIndex };
 
-  let res = await fetch(SCRIPT_URL, {
-    method:"POST",
-    body: JSON.stringify(payload)
-  });
-
-  let j = await res.json();
-  if(j.status==="success"){
-    alert("Saved");
-    clearForm();
-    loadData();
-  } else alert("Failed: "+j.message);
+  try {
+      let res = await fetch(SCRIPT_URL, { method:"POST", body: JSON.stringify(payload) });
+      let j = await res.json();
+      if(j.status==="success"){
+        alert("✅ Saved Successfully!");
+        clearForm();
+        loadData();
+      } else { alert("Failed: "+j.message); }
+  } catch(e){ console.error(e); alert("Error saving"); }
+  
+  btn.innerText = "Save Record"; btn.disabled = false;
 }
 
-
-/* Clear Form */
 function clearForm(){
-  ["date","odm","model","po","item","defectDetails","defectRate","rca","remarks","preparedBy"]
-  .forEach(id=>document.getElementById(id).value="");
-  images.value="";
-  saveBtn.textContent = "Save (Online)";
-  saveBtn.onclick = ()=>saveRecord("create");
+  document.querySelectorAll('input, textarea').forEach(el => el.value = "");
+  document.getElementById('saveBtn').innerText = "Save Record";
+  document.getElementById('editRowIndex').value = "";
 }
 
+async function loadData(){
+  document.querySelector("#dataTable tbody").innerHTML = "<tr><td colspan='7'>Loading data...</td></tr>";
+  try {
+      let res = await fetch(SCRIPT_URL);
+      let j = await res.json();
+      allData = j.rows;
+      renderTable(j.rows);
+  } catch(e) { console.error(e); }
+}
 
-/* Render Table */
 function renderTable(rows){
   const tbody = document.querySelector("#dataTable tbody");
   tbody.innerHTML = "";
 
-  rows.forEach(r=>{
-    let imgs = (r.ImageURLs || "").split(";").map(x=>x.trim()).filter(Boolean);
-
-    let imgHtml = imgs.length ?
-      imgs.map(u=>`<img src="${u}" class="thumb" onclick="openPreview(&quot;${u}&quot;)">`).join("")
-      : "-";
+  rows.forEach((r, idx) => {
+    let imgList = (r.ImageURLs || "").split(" || ").filter(Boolean);
+    let thumb = imgList.length ? `<img src="${imgList[0]}" class="thumb" onclick='openPreview(${JSON.stringify(r)})'>` : '<span style="color:#ccc">No Img</span>';
 
     let tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${escapeHtml(r.Date)}</td>
-      <td>${escapeHtml(r.ODM)}</td>
       <td>${escapeHtml(r.Model)}</td>
-      <td>${escapeHtml(r.PO)}</td>
-      <td>${escapeHtml(r.Item)}</td>
       <td>${escapeHtml(r.DefectDetails)}</td>
       <td>${escapeHtml(r.DefectRate)}</td>
       <td>${escapeHtml(r.RCA)}</td>
-      <td>${escapeHtml(r.Remarks)}</td>
-      <td>${escapeHtml(r.PreparedBy)}</td>
-      <td>${imgHtml}</td>
+      <td>${thumb}</td>
       <td>
-        <button class="btn secondary" onclick="editRecord(${r._rowIndex})">Edit</button>
-        <button class="btn" onclick="deleteRecord(${r._rowIndex})">Delete</button>
+        <button class="btn success" style="padding:5px 10px; font-size:12px;" onclick='openPreview(${JSON.stringify(r)})'>Preview/PDF</button>
+        <button class="btn secondary" style="padding:5px 10px; font-size:12px;" onclick="editRecord(${r._rowIndex})">Edit</button>
+        <button class="btn danger" style="padding:5px 10px; font-size:12px;" onclick="deleteRecord(${r._rowIndex})">Del</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
 
+function editRecord(rowIndex){
+  let r = allData.find(x => x._rowIndex == rowIndex);
+  if(!r) return;
 
-/* Load Data */
-async function loadData(){
-  let res = await fetch(SCRIPT_URL);
-  let j = await res.json();
-  renderTable(j.rows);
+  document.getElementById('date').value = r.Date;
+  document.getElementById('odm').value = r.ODM;
+  document.getElementById('model').value = r.Model;
+  document.getElementById('po').value = r.PO;
+  document.getElementById('item').value = r.Item;
+  document.getElementById('defectDetails').value = r.DefectDetails;
+  document.getElementById('defectRate').value = r.DefectRate;
+  document.getElementById('rca').value = r.RCA;
+  document.getElementById('preparedBy').value = r.PreparedBy;
+  document.getElementById('editRowIndex').value = rowIndex;
+
+  document.getElementById('saveBtn').innerText = "Update Record";
+  window.scrollTo(0,0);
 }
 
-
-/* Edit */
-async function editRecord(rowIndex){
-  let res = await fetch(SCRIPT_URL);
-  let j = await res.json();
-  let r = j.rows.find(x=>x._rowIndex==rowIndex);
-
-  date.value = r.Date;
-  odm.value = r.ODM;
-  model.value = r.Model;
-  po.value = r.PO;
-  item.value = r.Item;
-  defectDetails.value = r.DefectDetails;
-  defectRate.value = r.DefectRate;
-  rca.value = r.RCA;
-  remarks.value = r.Remarks;
-  preparedBy.value = r.PreparedBy;
-
-  saveBtn.textContent = "Update";
-  saveBtn.onclick = ()=>saveRecord("update", rowIndex);
-}
-
-
-/* Delete */
 async function deleteRecord(rowIndex){
   if(!confirm("Delete this record?")) return;
-
-  let res = await fetch(SCRIPT_URL,{
-    method:"POST",
-    body: JSON.stringify({action:"delete", rowIndex})
-  });
-
-  let j = await res.json();
-  if(j.status==="success"){
-    alert("Deleted");
-    loadData();
-  }
+  await fetch(SCRIPT_URL,{ method:"POST", body: JSON.stringify({action:"delete", rowIndex}) });
+  loadData();
 }
 
+// --- PREVIEW & PDF LOGIC ---
+function openPreview(r){
+    // 1. Fill Text Data
+    document.getElementById('rep_date').innerText = r.Date || "-";
+    document.getElementById('rep_prep').innerText = r.PreparedBy || "-";
+    document.getElementById('rep_odm').innerText = r.ODM || "-";
+    document.getElementById('rep_model').innerText = r.Model || "-";
+    document.getElementById('rep_po').innerText = r.PO || "-";
+    document.getElementById('rep_item').innerText = r.Item || "-";
+    document.getElementById('rep_desc').innerText = r.DefectDetails || "-";
+    document.getElementById('rep_rate').innerText = r.DefectRate || "-";
+    document.getElementById('rep_rca').innerText = r.RCA || "-";
 
-/* Preview Popup */
-function openPreview(url){
-  document.getElementById("modalImage").src = url;
-  document.getElementById("modal").style.display = "flex";
+    // 2. Fill Images
+    const imgContainer = document.getElementById('rep_images');
+    imgContainer.innerHTML = "";
+    let imgs = (r.ImageURLs || "").split(" || ").filter(Boolean);
+    
+    if(imgs.length > 0){
+        imgs.forEach(url => {
+            let img = document.createElement('img');
+            img.src = url;
+            img.className = 'report-img';
+            imgContainer.appendChild(img);
+        });
+    } else {
+        imgContainer.innerHTML = "<p>No Images Attached</p>";
+    }
 
-  document.getElementById("downloadPdfBtn").onclick = ()=>downloadPDF(url);
+    // 3. Show Modal
+    document.getElementById('modal').style.display = 'flex';
 }
 
 function closeModal(){
-  document.getElementById("modal").style.display = "none";
+    document.getElementById('modal').style.display = 'none';
 }
 
+function downloadPDF(){
+    const element = document.getElementById('printArea');
+    const modelName = document.getElementById('rep_model').innerText;
+    
+    // HTML2PDF Configuration
+    const opt = {
+        margin:       0.5,
+        filename:     `Defect_Report_${modelName}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
 
-/* Download PDF */
-function downloadPDF(imgUrl){
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-
-  let img = new Image();
-  img.src = imgUrl;
-
-  img.onload = function(){
-    pdf.addImage(img,"JPEG",10,10,180,150);
-    pdf.save("Defect_Image.pdf");
-  };
+    html2pdf().set(opt).from(element).save();
 }
 
+// Event Listeners
+document.getElementById('saveBtn').onclick = saveRecord;
+document.getElementById('clearBtn').onclick = clearForm;
+document.getElementById('refreshBtn').onclick = loadData;
 
-/* Buttons */
-saveBtn.onclick = ()=>saveRecord("create");
-clearBtn.onclick = clearForm;
-refreshBtn.onclick = loadData;
-
+// Initial Load
 loadData();
 
 </script>
