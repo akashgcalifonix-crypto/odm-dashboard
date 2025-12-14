@@ -4,60 +4,40 @@
   <meta charset="utf-8"/>
   <title>Defect Dashboard & PDF Report</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  
-  <!-- html2pdf Library for better PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; }
     .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1000px; margin: auto; }
     h2 { color: #0369a1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-    
-    /* Form Grid */
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
     label { font-weight: bold; font-size: 12px; display: block; margin-bottom: 5px; }
-    input, textarea, select { padding: 8px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    
-    /* Buttons */
+    input, textarea { padding: 8px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     .btn { background: #0369a1; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .btn:hover { background: #025686; }
     .btn.secondary { background: #6b7280; }
     .btn.danger { background: #dc3545; }
     .btn.success { background: #28a745; }
-    
-    /* Table */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; font-size: 13px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle; }
     th { background: #0369a1; color: white; }
-    
     .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
-
-    /* Modal (Popup) Styles */
-    .modal { 
-        position: fixed; top:0; left:0; right:0; bottom:0; 
-        background: rgba(0,0,0,0.6); 
-        display:none; justify-content:center; align-items:center; z-index: 1000;
-    }
-    .modal-content { 
-        background:white; width: 800px; max-width: 95%; height: 90vh; 
-        border-radius:8px; display: flex; flex-direction: column;
-    }
+    
+    /* Modal */
+    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index: 1000; }
+    .modal-content { background:white; width: 800px; max-width: 95%; height: 90vh; border-radius:8px; display: flex; flex-direction: column; }
     .modal-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
     .modal-body { padding: 20px; overflow-y: auto; flex: 1; background: #f9f9f9; }
     .modal-footer { padding: 15px; border-top: 1px solid #ddd; text-align: right; background: #fff; border-radius: 0 0 8px 8px;}
 
-    /* PDF Report Layout (Inside Modal) */
-    .report-container {
-        background: white; padding: 30px; border: 1px solid #ddd; 
-        box-shadow: 0 0 10px rgba(0,0,0,0.05);
-    }
+    /* Report Layout */
+    .report-container { background: white; padding: 30px; border: 1px solid #ddd; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
     .report-title { text-align: center; color: #0369a1; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
     .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
     .report-table td { padding: 8px; border: 1px solid #ccc; }
     .report-label { background: #f0f8ff; font-weight: bold; width: 30%; }
     .report-img-grid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
     .report-img { max-width: 200px; max-height: 200px; border: 1px solid #ddd; padding: 5px; }
-
   </style>
 </head>
 
@@ -65,7 +45,6 @@
 
 <div class="card">
   <h2>Defect Dashboard & Data Entry</h2>
-
   <input type="hidden" id="editRowIndex">
 
   <div class="form-grid">
@@ -79,7 +58,7 @@
       <div><label>Item Name</label><input id="item"></div>
       <div><label>Defect Rate %</label><input id="defectRate" type="number" placeholder="%"></div>
       <div><label>Prepared By</label><input id="preparedBy"></div>
-      <div><label>Upload Images</label><input id="images" type="file" accept="image/*" multiple></div>
+      <div><label>Upload Images (Max 3)</label><input id="images" type="file" accept="image/*" multiple></div>
   </div>
 
   <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
@@ -95,105 +74,96 @@
 
   <table id="dataTable">
     <thead>
-      <tr>
-        <th>Date</th><th>Model</th><th>Defect</th><th>Rate%</th><th>RCA</th>
-        <th>Image</th><th>Actions</th>
-      </tr>
+      <tr><th>Date</th><th>Model</th><th>Defect</th><th>Rate%</th><th>RCA</th><th>Image</th><th>Actions</th></tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
-<!-- PREVIEW & PDF MODAL -->
+<!-- PREVIEW MODAL -->
 <div id="modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
       <h3 style="margin:0">📄 Report Preview</h3>
       <button onclick="closeModal()" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
     </div>
-    
     <div class="modal-body">
-      <!-- This area will be printed to PDF -->
       <div id="printArea" class="report-container">
           <h2 class="report-title">Defect Analysis Report</h2>
-          
           <table class="report-table">
-              <tr>
-                  <td class="report-label">Date</td><td id="rep_date"></td>
-                  <td class="report-label">Prepared By</td><td id="rep_prep"></td>
-              </tr>
-              <tr>
-                  <td class="report-label">ODM</td><td id="rep_odm"></td>
-                  <td class="report-label">Model</td><td id="rep_model"></td>
-              </tr>
-              <tr>
-                  <td class="report-label">PO Number</td><td id="rep_po"></td>
-                  <td class="report-label">Item</td><td id="rep_item"></td>
-              </tr>
+              <tr><td class="report-label">Date</td><td id="rep_date"></td><td class="report-label">Prepared By</td><td id="rep_prep"></td></tr>
+              <tr><td class="report-label">ODM</td><td id="rep_odm"></td><td class="report-label">Model</td><td id="rep_model"></td></tr>
+              <tr><td class="report-label">PO Number</td><td id="rep_po"></td><td class="report-label">Item</td><td id="rep_item"></td></tr>
           </table>
-
           <table class="report-table">
-              <tr>
-                  <td class="report-label">Defect Details</td>
-                  <td id="rep_desc"></td>
-              </tr>
-              <tr>
-                  <td class="report-label">Defect Rate</td>
-                  <td id="rep_rate" style="font-weight:bold; color:red;"></td>
-              </tr>
-              <tr>
-                  <td class="report-label">RCA / Remarks</td>
-                  <td id="rep_rca"></td>
-              </tr>
+              <tr><td class="report-label">Defect Details</td><td id="rep_desc"></td></tr>
+              <tr><td class="report-label">Defect Rate</td><td id="rep_rate" style="font-weight:bold; color:red;"></td></tr>
+              <tr><td class="report-label">RCA / Remarks</td><td id="rep_rca"></td></tr>
           </table>
-
           <div style="margin-top:20px; border-top:2px solid #eee; padding-top:10px;">
               <h4 style="margin:0 0 10px 0;">Defect Images:</h4>
               <div id="rep_images" class="report-img-grid"></div>
           </div>
       </div>
     </div>
-
     <div class="modal-footer">
         <button class="btn secondary" onclick="closeModal()">Close</button>
-        <button class="btn success" onclick="downloadPDF()">⬇ Download PDF Report</button>
+        <button class="btn success" onclick="downloadPDF()">⬇ Download PDF</button>
     </div>
   </div>
 </div>
 
 <script>
-
-// ⚠️ APNA GOOGLE APPS SCRIPT URL YAHAN PASTE KAREIN
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzSUli7P6SxV-X8tDKIImf1MIlN6BUy1Ma28vCpZqKeJlXXQPCuwBlfOplIsOmSnbFDA/exec";
+// ⚠️ PASTE NEW DEPLOYMENT URL HERE
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6vmVPHgK---h3iFC-UZYa4V2HAmGXyTVdicJ9EX2h4skEuWwvL_kEUMxfR74DQR4zCA/exec";
 
 let allData = [];
 
 // --- UTILS ---
 function escapeHtml(s){ return s ? String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""; }
 
-function readFilesDataURLs(files){
-  return Promise.all([...files].map(file => new Promise(res=>{
-    const fr = new FileReader();
-    fr.onload = ()=>res(fr.result); // Only store Base64
-    fr.readAsDataURL(file);
+function readFilesAndCompress(files) {
+  return Promise.all([...files].map(file => new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        // Resize to reduce size for upload
+        let w = img.width, h = img.height;
+        if(w > 800) { h *= 800/w; w = 800; }
+        canvas.width = w; canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve({ name: file.name, data: canvas.toDataURL('image/jpeg', 0.6) });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   })));
 }
 
-// --- CRUD OPERATIONS ---
+// --- SAVE ---
 async function saveRecord(){
   const btn = document.getElementById('saveBtn');
-  btn.innerText = "Saving..."; btn.disabled = true;
+  btn.innerText = "Uploading to Drive..."; btn.disabled = true;
 
-  const imgs = await readFilesDataURLs(document.getElementById('images').files);
+  const fileInput = document.getElementById('images');
+  let imgs = [];
+  if(fileInput.files.length > 0) {
+      imgs = await readFilesAndCompress(fileInput.files);
+  }
+
   const rowIndex = document.getElementById('editRowIndex').value;
   const action = rowIndex ? "update" : "create";
 
-  // Use existing images if editing and no new images uploaded
-  let finalImages = imgs.join(" || ");
+  // If update and no new image, keep old
   if(action === "update" && imgs.length === 0){
-      // Find original row to keep old images
       let oldRow = allData.find(r => r._rowIndex == rowIndex);
-      if(oldRow) finalImages = oldRow.ImageURLs;
+      if(oldRow && oldRow.ImageURLs) {
+          // Pass old URLs as special objects
+          imgs = oldRow.ImageURLs.split(" || ").map(url => ({ data: url }));
+      }
   }
 
   let record = {
@@ -204,23 +174,22 @@ async function saveRecord(){
     item: document.getElementById('item').value,
     defectDetails: document.getElementById('defectDetails').value,
     defectRate: document.getElementById('defectRate').value,
-    rca: document.getElementById('rca').value, // merged rca and remarks for simplicity
+    rca: document.getElementById('rca').value,
     remarks: "", 
     preparedBy: document.getElementById('preparedBy').value,
-    images: finalImages
+    images: imgs // Sending array of {name, data}
   };
 
-  let payload = { action, record, rowIndex };
-
   try {
-      let res = await fetch(SCRIPT_URL, { method:"POST", body: JSON.stringify(payload) });
+      // JSON.stringify can fail if payload is huge, resizing above prevents this
+      let res = await fetch(SCRIPT_URL, { method:"POST", body: JSON.stringify({ action, record, rowIndex }) });
       let j = await res.json();
       if(j.status==="success"){
-        alert("✅ Saved Successfully!");
+        alert("✅ Saved to Drive & Sheet Successfully!");
         clearForm();
         loadData();
       } else { alert("Failed: "+j.message); }
-  } catch(e){ console.error(e); alert("Error saving"); }
+  } catch(e){ console.error(e); alert("Error saving. File might be too big."); }
   
   btn.innerText = "Save Record"; btn.disabled = false;
 }
@@ -232,7 +201,7 @@ function clearForm(){
 }
 
 async function loadData(){
-  document.querySelector("#dataTable tbody").innerHTML = "<tr><td colspan='7'>Loading data...</td></tr>";
+  document.querySelector("#dataTable tbody").innerHTML = "<tr><td colspan='7'>Loading data from Sheet...</td></tr>";
   try {
       let res = await fetch(SCRIPT_URL);
       let j = await res.json();
@@ -244,23 +213,26 @@ async function loadData(){
 function renderTable(rows){
   const tbody = document.querySelector("#dataTable tbody");
   tbody.innerHTML = "";
-
   rows.forEach((r, idx) => {
     let imgList = (r.ImageURLs || "").split(" || ").filter(Boolean);
+    // Use first image as thumb
     let thumb = imgList.length ? `<img src="${imgList[0]}" class="thumb" onclick='openPreview(${JSON.stringify(r)})'>` : '<span style="color:#ccc">No Img</span>';
+
+    // Format Date properly
+    let cleanDate = r.Date ? r.Date.replace("'", "") : "";
 
     let tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${escapeHtml(r.Date)}</td>
+      <td>${cleanDate}</td>
       <td>${escapeHtml(r.Model)}</td>
       <td>${escapeHtml(r.DefectDetails)}</td>
       <td>${escapeHtml(r.DefectRate)}</td>
       <td>${escapeHtml(r.RCA)}</td>
       <td>${thumb}</td>
       <td>
-        <button class="btn success" style="padding:5px 10px; font-size:12px;" onclick='openPreview(${JSON.stringify(r)})'>Preview/PDF</button>
-        <button class="btn secondary" style="padding:5px 10px; font-size:12px;" onclick="editRecord(${r._rowIndex})">Edit</button>
-        <button class="btn danger" style="padding:5px 10px; font-size:12px;" onclick="deleteRecord(${r._rowIndex})">Del</button>
+        <button class="btn success" style="padding:5px;" onclick='openPreview(${JSON.stringify(r)})'>PDF</button>
+        <button class="btn secondary" style="padding:5px;" onclick="editRecord(${r._rowIndex})">Edit</button>
+        <button class="btn danger" style="padding:5px;" onclick="deleteRecord(${r._rowIndex})">Del</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -270,8 +242,7 @@ function renderTable(rows){
 function editRecord(rowIndex){
   let r = allData.find(x => x._rowIndex == rowIndex);
   if(!r) return;
-
-  document.getElementById('date').value = r.Date;
+  document.getElementById('date').value = r.Date.replace("'", ""); // Clean date
   document.getElementById('odm').value = r.ODM;
   document.getElementById('model').value = r.Model;
   document.getElementById('po').value = r.PO;
@@ -281,78 +252,62 @@ function editRecord(rowIndex){
   document.getElementById('rca').value = r.RCA;
   document.getElementById('preparedBy').value = r.PreparedBy;
   document.getElementById('editRowIndex').value = rowIndex;
-
   document.getElementById('saveBtn').innerText = "Update Record";
   window.scrollTo(0,0);
 }
 
 async function deleteRecord(rowIndex){
-  if(!confirm("Delete this record?")) return;
+  if(!confirm("Delete?")) return;
   await fetch(SCRIPT_URL,{ method:"POST", body: JSON.stringify({action:"delete", rowIndex}) });
   loadData();
 }
 
-// --- PREVIEW & PDF LOGIC ---
 function openPreview(r){
-    // 1. Fill Text Data
-    document.getElementById('rep_date').innerText = r.Date || "-";
+    document.getElementById('rep_date').innerText = r.Date.replace("'", "") || "-";
     document.getElementById('rep_prep').innerText = r.PreparedBy || "-";
     document.getElementById('rep_odm').innerText = r.ODM || "-";
     document.getElementById('rep_model').innerText = r.Model || "-";
     document.getElementById('rep_po').innerText = r.PO || "-";
     document.getElementById('rep_item').innerText = r.Item || "-";
     document.getElementById('rep_desc').innerText = r.DefectDetails || "-";
-    document.getElementById('rep_rate').innerText = r.DefectRate || "-";
+    document.getElementById('rep_rate').innerText = r.DefectRate + "%" || "-";
     document.getElementById('rep_rca').innerText = r.RCA || "-";
 
-    // 2. Fill Images
     const imgContainer = document.getElementById('rep_images');
     imgContainer.innerHTML = "";
     let imgs = (r.ImageURLs || "").split(" || ").filter(Boolean);
     
     if(imgs.length > 0){
         imgs.forEach(url => {
+            // Using a proxy or direct link depending on access
             let img = document.createElement('img');
+            img.crossOrigin = "Anonymous"; // Try to help PDF rendering
             img.src = url;
             img.className = 'report-img';
             imgContainer.appendChild(img);
         });
-    } else {
-        imgContainer.innerHTML = "<p>No Images Attached</p>";
-    }
-
-    // 3. Show Modal
+    } else { imgContainer.innerHTML = "<p>No Images</p>"; }
     document.getElementById('modal').style.display = 'flex';
 }
 
-function closeModal(){
-    document.getElementById('modal').style.display = 'none';
-}
+function closeModal(){ document.getElementById('modal').style.display = 'none'; }
 
 function downloadPDF(){
     const element = document.getElementById('printArea');
     const modelName = document.getElementById('rep_model').innerText;
-    
-    // HTML2PDF Configuration
-    const opt = {
-        margin:       0.5,
-        filename:     `Defect_Report_${modelName}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set({
+        margin: 0.5,
+        filename: `Defect_Report_${modelName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true }, // useCORS important for Drive images
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    }).from(element).save();
 }
 
-// Event Listeners
 document.getElementById('saveBtn').onclick = saveRecord;
 document.getElementById('clearBtn').onclick = clearForm;
 document.getElementById('refreshBtn').onclick = loadData;
-
-// Initial Load
 loadData();
-
 </script>
 </body>
 </html>
