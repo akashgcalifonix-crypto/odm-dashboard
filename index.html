@@ -11,8 +11,12 @@
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; }
     .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1000px; margin: auto; }
-    h2 { color: #0369a1; border-bottom: 2px solid #eee; padding-bottom: 10px; }
     
+    /* --- HEADER STYLES UPDATED FOR LOGO --- */
+    .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+    .header-row h2 { color: #0369a1; margin: 0; border: none; padding: 0; }
+    .app-logo { height: 50px; object-fit: contain; }
+
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
     label { font-weight: bold; font-size: 12px; display: block; margin-bottom: 5px; }
     input, textarea, select { padding: 8px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
@@ -38,6 +42,10 @@
 
     /* Report Layout */
     .report-container { background: white; padding: 30px; border: 1px solid #ddd; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+    /* Updated Report Header for Logo */
+    .report-header-center { text-align: center; margin-bottom: 15px; }
+    .report-logo { height: 60px; margin-bottom: 10px; }
+    
     .report-title { text-align: center; color: #0369a1; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
     .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
     .report-table td { padding: 8px; border: 1px solid #ccc; }
@@ -50,7 +58,12 @@
 <body>
 
 <div class="card">
-  <h2>ODM Major Issues</h2>
+  <!-- LOGO ADDED HERE -->
+  <div class="header-row">
+      <h2>ODM Major Issues</h2>
+      <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="app-logo" alt="Logo">
+  </div>
+
   <input type="hidden" id="editRowIndex">
 
   <div class="form-grid">
@@ -95,6 +108,11 @@
     </div>
     <div class="modal-body">
       <div id="printArea" class="report-container">
+          <!-- LOGO ADDED TO REPORT HERE -->
+          <div class="report-header-center">
+              <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="report-logo" alt="Logo" crossorigin="anonymous">
+          </div>
+          
           <h2 class="report-title">Defect Analysis Report</h2>
           <table class="report-table">
               <tr><td class="report-label">Date</td><td id="rep_date"></td><td class="report-label">Prepared By</td><td id="rep_prep"></td></tr>
@@ -326,12 +344,3 @@ loadData();
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
