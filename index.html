@@ -5,216 +5,195 @@
   <title>Incoming Rejection Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   
-  <!-- html2pdf Library -->
+  <!-- LIBRARIES -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; }
-    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1000px; margin: auto; }
+    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1100px; margin: auto; }
     
-    /* --- APP HEADER --- */
+    /* TABS */
+    .tab-nav { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+    .tab-btn { background: none; border: none; padding: 12px 25px; font-size: 15px; font-weight: bold; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s; }
+    .tab-btn.active { color: #0369a1; border-bottom-color: #0369a1; background: #f8fbff; }
+    .tab-content { display: none; animation: fadeIn 0.4s; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* HEADER */
     .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
-    .header-row h2 { color: #0369a1; margin: 0; }
+    .header-row h2 { color: #0369a1; margin: 0; font-size: 24px; }
     .app-logo { height: 50px; object-fit: contain; }
 
-    /* --- FORM STYLES --- */
+    /* FORM & BUTTONS */
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
     label { font-weight: bold; font-size: 12px; color: #555; display: block; margin-bottom: 5px; }
-    input, textarea, select { padding: 9px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fafafa; }
-    input:focus, textarea:focus { border-color: #0369a1; background: #fff; outline: none; }
-    
-    .btn { background: #0369a1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    input, textarea, select { padding: 10px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fafafa; }
+    .btn { background: #0369a1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn:hover { background: #025686; transform: translateY(-1px); }
     .btn.secondary { background: #6b7280; }
-    .btn.danger { background: #dc3545; }
+    .btn.ppt { background: #D24726; } 
+    .btn.excel { background: #217346; }
     .btn.success { background: #28a745; }
     
-    /* --- DATA TABLE --- */
-    table.data-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; font-size: 13px; border-radius: 8px; overflow: hidden; }
+    /* TABLE */
+    table.data-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; font-size: 13px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .data-table th, .data-table td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; vertical-align: middle; }
     .data-table th { background: #0369a1; color: white; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-    .data-table tr:hover { background: #f9fbfd; }
+    .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
+
+    /* REPORT PREVIEW CONTAINER */
+    .report-control-bar { background: #eef2f6; padding: 20px; border-radius: 8px; display: flex; gap: 15px; align-items: end; margin-bottom: 20px; }
+    .preview-box { background: white; border: 1px solid #ddd; padding: 40px; min-height: 500px; margin-top: 20px; border-radius: 8px; }
     
-    .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; transition: transform 0.2s; }
-    .thumb:hover { transform: scale(1.5); }
+    /* --- SLIDE CARD STYLE (Designed for PDF Page Breaks) --- */
+    .slide-card { 
+        border: 1px solid #ddd; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+        margin-bottom: 30px; 
+        padding: 0; 
+        background: white; 
+        display: flex; 
+        overflow: hidden; 
+        position: relative;
+        /* CRITICAL FOR PDF: Prevents cutting inside the card */
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        height: auto;
+        min-height: 400px;
+    }
 
-    /* --- MODAL --- */
-    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index: 1000; backdrop-filter: blur(2px); }
-    .modal-content { background:white; width: 850px; max-width: 95%; height: 90vh; border-radius:8px; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-    .modal-header { padding: 15px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; border-radius: 8px 8px 0 0; }
-    .modal-body { padding: 30px; overflow-y: auto; flex: 1; background: #525659; /* PDF viewer bg look */ display: flex; justify-content: center; }
-    .modal-footer { padding: 15px; border-top: 1px solid #ddd; text-align: right; background: #fff; border-radius: 0 0 8px 8px;}
-
-    /* --- NEW ATTRACTIVE REPORT STYLES --- */
-    .report-container { background: white; width: 100%; max-width: 210mm; min-height: 297mm; padding: 40px; box-sizing: border-box; box-shadow: 0 0 15px rgba(0,0,0,0.5); position: relative; }
+    .slide-sidebar { width: 40px; background: linear-gradient(180deg, #cde4f7 0%, #ffffff 100%); flex-shrink: 0; border-right: 1px solid #eee; }
+    .slide-content { padding: 30px; flex: 1; position: relative; }
     
-    /* Report Header */
-    .rep-head-wrap { border-bottom: 4px solid #0369a1; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-    .rep-logo { height: 70px; object-fit: contain; }
-    .rep-title-box { text-align: right; }
-    .rep-title-box h1 { margin: 0; color: #0369a1; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
-    .rep-title-box p { margin: 5px 0 0; color: #666; font-size: 12px; }
+    .slide-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .slide-title { font-size: 28px; color: #003366; font-weight: bold; margin: 0; }
+    .slide-logo { height: 40px; object-fit: contain; }
 
-    /* Info Grid (Cards) */
-    .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-    .info-card { background: #f8fbff; border: 1px solid #e1e8f0; padding: 15px; border-radius: 6px; }
-    .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; border-bottom: 1px dashed #e0e0e0; padding-bottom: 4px; }
-    .info-row:last-child { border: none; margin: 0; padding: 0; }
-    .info-label { color: #666; font-weight: 600; }
-    .info-val { font-weight: bold; color: #333; }
-
-    /* Rate Box */
-    .rate-box { background: #0369a1; color: white; text-align: center; padding: 15px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; }
-    .rate-title { font-size: 11px; text-transform: uppercase; opacity: 0.9; }
-    .rate-val { font-size: 28px; font-weight: bold; margin-top: 5px; }
-
-    /* Details Section */
-    .detail-section { margin-bottom: 30px; }
-    .sec-head { background: #eef2f6; color: #0369a1; padding: 8px 12px; font-weight: bold; font-size: 14px; border-left: 4px solid #0369a1; margin-bottom: 10px; }
-    .detail-text { font-size: 13px; line-height: 1.6; color: #333; padding: 0 10px; white-space: pre-wrap; text-align: justify; }
-
-    /* Images */
-    .img-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
-    .report-img-wrap { border: 1px solid #ddd; padding: 5px; border-radius: 4px; background: #fff; text-align: center; }
-    .report-img { width: 100%; height: 180px; object-fit: contain; }
+    .slide-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 30px; }
     
-    /* Footer */
-    .rep-footer { margin-top: 50px; border-top: 1px solid #eee; padding-top: 10px; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
+    .info-block { margin-bottom: 15px; }
+    .defect-rate-huge { color: #D93025; font-size: 22px; font-weight: bold; margin-left: 10px; }
+    
+    .mini-table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 20px; text-align: center; }
+    .mini-table th { background: #ED7D31; color: white; padding: 8px; border: 1px solid #fff; }
+    .mini-table td { background: #FCE4D6; padding: 8px; border: 1px solid white; color: #333; }
+
+    .img-section { text-align: center; }
+    .img-label { background: #5B9BD5; color: white; display: inline-block; padding: 5px 15px; font-weight: bold; margin-bottom: 10px; border-radius: 4px; font-size: 12px; }
+    .img-stack { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .slide-img { width: 100%; max-height: 200px; object-fit: contain; border: 4px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: #333; }
+    
+    /* TARGET ICON */
+    .target-icon {
+        width: 40px; height: 40px;
+        background: radial-gradient(circle, #e74c3c 15%, transparent 15%, transparent 30%, #e74c3c 30%, #e74c3c 45%, transparent 45%, transparent 100%);
+        border: 2px solid #e74c3c; border-radius: 50%; position: relative; display: inline-block; vertical-align: middle;
+    }
+    .target-icon::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #e74c3c; transform: translateY(-50%); }
+    .target-icon::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #e74c3c; transform: translateX(-50%); }
+
   </style>
 </head>
 
 <body>
 
 <div class="card">
-  <!-- LOGO IN APP HEADER -->
   <div class="header-row">
       <h2>Incoming Rejection Tracker</h2>
-      <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="app-logo" alt="Logo">
+      <img id="mainLogo" src="https://i.postimg.cc/5y7SN4xc/logo.png" class="app-logo" crossorigin="anonymous" alt="Logo">
   </div>
 
-  <input type="hidden" id="editRowIndex">
-
-  <div class="form-grid">
-      <div><label>Date</label><input id="date" type="date"></div>
-      <div><label>ODM</label><input id="odm"></div>
-      <div><label>Model</label><input id="model"></div>
-      <div><label>PO Number</label><input id="po"></div>
+  <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('entry')">Daily Entry</button>
+      <button class="tab-btn" onclick="switchTab('report')">Monthly Report</button>
   </div>
 
-  <div class="form-grid">
-      <div><label>Item Name</label><input id="item"></div>
-      <div><label>Defect Rate %</label><input id="defectRate" type="number" placeholder="%"></div>
-      <div><label>Prepared By</label><input id="preparedBy"></div>
-      <div><label>Upload Images (Max 3)</label><input id="images" type="file" accept="image/*" multiple></div>
-  </div>
-
-  <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-      <div><label>Defect Details</label><textarea id="defectDetails" rows="3"></textarea></div>
-      <div><label>RCA / Remarks</label><textarea id="rca" rows="3"></textarea></div>
-  </div>
-
-  <div style="margin-top:20px;">
-      <button id="saveBtn" class="btn">Save Record</button>
-      <button id="clearBtn" class="btn secondary">Clear Form</button>
-      <button id="refreshBtn" class="btn secondary" style="float:right">Refresh List</button>
-  </div>
-
-  <table id="dataTable" class="data-table">
-    <thead>
-      <tr><th>Date</th><th>Model</th><th>Defect</th><th>Rate%</th><th>RCA</th><th>Image</th><th>Actions</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<!-- PROFESSIONAL PREVIEW MODAL -->
-<div id="modal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 style="margin:0; color:#333;">📄 Report Preview</h3>
-      <button onclick="closeModal()" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
-    </div>
-    
-    <div class="modal-body">
-      <!-- REPORT AREA START -->
-      <div id="printArea" class="report-container">
-          
-          <!-- Header -->
-          <div class="rep-head-wrap">
-              <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="rep-logo" alt="Logo" crossorigin="anonymous">
-              <div class="rep-title-box">
-                  <h1>Defect Analysis Report</h1>
-                  <p>Quality Assurance Dept.</p>
-                  <p id="rep_gen_date"></p>
-              </div>
-          </div>
-
-          <!-- Info Grid -->
-          <div class="info-section">
-              <!-- Left Info -->
-              <div class="info-card">
-                  <div class="info-row"><span class="info-label">ODM Name</span> <span id="rep_odm" class="info-val"></span></div>
-                  <div class="info-row"><span class="info-label">Model No.</span> <span id="rep_model" class="info-val"></span></div>
-                  <div class="info-row"><span class="info-label">Item Name</span> <span id="rep_item" class="info-val"></span></div>
-                  <div class="info-row"><span class="info-label">PO Number</span> <span id="rep_po" class="info-val"></span></div>
-              </div>
-              
-              <!-- Right Info / Stats -->
-              <div style="display:grid; grid-template-columns: 1fr 100px; gap:10px;">
-                  <div class="info-card">
-                      <div class="info-row"><span class="info-label">Report Date</span> <span id="rep_date" class="info-val"></span></div>
-                      <div class="info-row"><span class="info-label">Prepared By</span> <span id="rep_prep" class="info-val"></span></div>
-                      <div class="info-row"><span class="info-label">Status</span> <span class="info-val" style="color:red">Critical</span></div>
-                  </div>
-                  <div class="rate-box">
-                      <div class="rate-title">Defect Rate</div>
-                      <div id="rep_rate" class="rate-val"></div>
-                  </div>
-              </div>
-          </div>
-
-          <!-- Details -->
-          <div class="detail-section">
-              <div class="sec-head">1. Defect Description & Observation</div>
-              <div id="rep_desc" class="detail-text"></div>
-          </div>
-
-          <div class="detail-section">
-              <div class="sec-head">2. Root Cause Analysis (RCA) / Remarks</div>
-              <div id="rep_rca" class="detail-text"></div>
-          </div>
-
-          <!-- Images -->
-          <div class="detail-section" style="margin-top:40px;">
-              <div class="sec-head">3. Visual Evidence</div>
-              <div id="rep_images" class="img-grid"></div>
-          </div>
-
-          <!-- Footer -->
-          <div class="rep-footer">
-              <span>Authorized Signature: ___________________</span>
-              <span>Generated via ODM Tracker</span>
-          </div>
-
+  <!-- ENTRY TAB -->
+  <div id="entryTab" class="tab-content active">
+      <input type="hidden" id="editRowIndex">
+      <div class="form-grid">
+          <div><label>Date</label><input id="date" type="date"></div>
+          <div><label>ODM Name</label><input id="odm" placeholder="e.g. Glanto"></div>
+          <div><label>Model</label><input id="model" placeholder="e.g. AD 141/148"></div>
+          <div><label>PO Number</label><input id="po"></div>
       </div>
-      <!-- REPORT AREA END -->
-    </div>
+      <div class="form-grid">
+          <div><label>Item Name</label><input id="item" placeholder="e.g. Light Guide"></div>
+          <div><label>Defect Rate %</label><input id="defectRate" type="number" step="0.01" placeholder="%"></div>
+          <div><label>Prepared By</label><input id="preparedBy"></div>
+          <div><label>Upload Images (Max 3)</label><input id="images" type="file" accept="image/*" multiple></div>
+      </div>
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+          <div><label>Defect Details</label><textarea id="defectDetails" rows="3"></textarea></div>
+          <div><label>RCA / Remarks</label><textarea id="rca" rows="3"></textarea></div>
+      </div>
+      <div style="margin-top:20px;">
+          <button id="saveBtn" class="btn" onclick="saveRecord()">Save Record</button>
+          <button class="btn secondary" onclick="clearForm()">Clear Form</button>
+          <button class="btn secondary" style="float:right" onclick="loadData()">Refresh List</button>
+      </div>
 
-    <div class="modal-footer">
-        <button class="btn secondary" onclick="closeModal()">Close Preview</button>
-        <button class="btn success" onclick="downloadPDF()">⬇ Download PDF Report</button>
-    </div>
+      <table id="dataTable" class="data-table">
+        <thead><tr><th>Date</th><th>ODM</th><th>Model</th><th>Defect</th><th>Rate%</th><th>Image</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+  </div>
+
+  <!-- REPORT TAB -->
+  <div id="reportTab" class="tab-content">
+      <div class="report-control-bar">
+          <div style="flex:1">
+              <label>Select Month & Year</label>
+              <input type="month" id="reportMonthInput">
+          </div>
+          <button class="btn" onclick="generateReport()">🔍 Preview Report</button>
+      </div>
+
+      <div id="reportActions" style="display:none; justify-content: flex-end; gap:10px; margin-bottom:10px;">
+          <button class="btn ppt" onclick="downloadProfessionalPPT()">📊 Download PPT</button>
+          <button class="btn excel" onclick="downloadExcel()">⬇ Excel</button>
+          <button class="btn success" onclick="downloadPDFReport()">⬇ Download PDF</button>
+      </div>
+
+      <div id="monthlyReportPreview" class="preview-box">
+          <div style="text-align:center; color:#999; margin-top:50px;">Select Month to Preview</div>
+      </div>
   </div>
 </div>
 
 <script>
-// ⚠️ YAHAN APNA SCRIPT URL PASTE KAREIN
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGCDn3USDWCByX5a-rgiZDkX-YwdfH4y1bd6_PgpLs-ZXgLo9FG5eboPSt4zKI8TfEcA/exec";
+// --- CONFIGURATION ---
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGCDn3USDWCByX5a-rgiZDkX-YwdfH4y1bd6_PgpLs-ZXgLo9FG5eboPSt4zKI8TfEcA/exec"; 
+const LOGO_URL = "https://i.postimg.cc/5y7SN4xc/logo.png";
 
 let allData = [];
+let currentReportData = [];
+let base64Logo = "";
 
-// --- UTILS ---
-function escapeHtml(s){ return s ? String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""; }
+// Convert Logo to Base64 to ensure it appears in PDF/PPT
+function convertLogoToBase64() {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function(){
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        base64Logo = canvas.toDataURL('image/png');
+    };
+    img.src = LOGO_URL;
+}
+convertLogoToBase64();
+
+function switchTab(t){
+    document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+    document.getElementById(t+'Tab').classList.add('active');
+    event.target.classList.add('active');
+}
 
 function readFilesAndCompress(files) {
   return Promise.all([...files].map(file => new Promise(resolve => {
@@ -222,13 +201,12 @@ function readFilesAndCompress(files) {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const c = document.createElement('canvas');
         let w = img.width, h = img.height;
         if(w > 800) { h *= 800/w; w = 800; }
-        canvas.width = w; canvas.height = h;
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve({ name: file.name, data: canvas.toDataURL('image/jpeg', 0.6) });
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.7));
       };
       img.src = e.target.result;
     };
@@ -236,187 +214,317 @@ function readFilesAndCompress(files) {
   })));
 }
 
-// --- SAVE FUNCTION ---
+// --- DATA HANDLING ---
 async function saveRecord(){
-  const btn = document.getElementById('saveBtn');
-  btn.innerText = "Uploading..."; btn.disabled = true;
+    const btn = document.getElementById('saveBtn');
+    btn.innerText="Saving..."; btn.disabled=true;
+    let imgs = [];
+    const files = document.getElementById('images').files;
+    if(files.length) imgs = await readFilesAndCompress(files);
 
-  const fileInput = document.getElementById('images');
-  let imgs = [];
-  if(fileInput.files.length > 0) {
-      imgs = await readFilesAndCompress(fileInput.files);
-  }
+    const rid = document.getElementById('editRowIndex').value;
+    if(rid && !imgs.length){
+        let old = allData.find(x=>x._rowIndex==rid);
+        if(old && old.ImageURLs) imgs = old.ImageURLs.split(" || ");
+    }
 
-  const rowIndex = document.getElementById('editRowIndex').value;
-  const action = rowIndex ? "update" : "create";
+    const rec = {
+        date: document.getElementById('date').value,
+        odm: document.getElementById('odm').value,
+        model: document.getElementById('model').value,
+        po: document.getElementById('po').value,
+        item: document.getElementById('item').value,
+        defectDetails: document.getElementById('defectDetails').value,
+        defectRate: document.getElementById('defectRate').value,
+        rca: document.getElementById('rca').value,
+        preparedBy: document.getElementById('preparedBy').value,
+        images: imgs
+    };
 
-  // Edit mode: Keep old images if no new ones are selected
-  if(action === "update" && imgs.length === 0){
-      let oldRow = allData.find(r => r._rowIndex == rowIndex);
-      if(oldRow && oldRow.ImageURLs) {
-          imgs = oldRow.ImageURLs.split(" || ").map(url => ({ data: url }));
-      }
-  }
-
-  let record = {
-    date: document.getElementById('date').value,
-    odm: document.getElementById('odm').value,
-    model: document.getElementById('model').value,
-    po: document.getElementById('po').value,
-    item: document.getElementById('item').value,
-    defectDetails: document.getElementById('defectDetails').value,
-    defectRate: document.getElementById('defectRate').value,
-    rca: document.getElementById('rca').value,
-    remarks: "", 
-    preparedBy: document.getElementById('preparedBy').value,
-    images: imgs 
-  };
-
-  try {
-      let res = await fetch(SCRIPT_URL, { method:"POST", body: JSON.stringify({ action, record, rowIndex }) });
-      let j = await res.json();
-      if(j.status==="success"){
-        alert("✅ Saved Successfully!");
-        clearForm();
-        loadData();
-      } else { alert("Failed: "+j.message); }
-  } catch(e){ console.error(e); alert("Error saving."); }
-  
-  btn.innerText = "Save Record"; btn.disabled = false;
+    try{
+        let res = await fetch(SCRIPT_URL, { method:"POST", body:JSON.stringify({ action:rid?"update":"create", record:rec, rowIndex:rid }) });
+        let j = await res.json();
+        if(j.status==="success"){ alert("Saved!"); clearForm(); loadData(); }
+        else alert("Error: "+j.message);
+    }catch(e){console.error(e); alert("Connection Error");}
+    btn.innerText="Save Record"; btn.disabled=false;
 }
 
 function clearForm(){
-  document.querySelectorAll('input, textarea').forEach(el => el.value = "");
-  document.getElementById('saveBtn').innerText = "Save Record";
-  document.getElementById('editRowIndex').value = "";
+    document.querySelectorAll('#entryTab input, #entryTab textarea').forEach(e=>e.value="");
+    document.getElementById('editRowIndex').value="";
+    document.getElementById('saveBtn').innerText="Save Record";
 }
 
-// --- LOAD DATA ---
 async function loadData(){
-  const tbody = document.querySelector("#dataTable tbody");
-  tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; padding:20px;'>Loading Data...</td></tr>";
-  try {
-      let res = await fetch(SCRIPT_URL);
-      let j = await res.json();
-      allData = j.rows;
-      renderTable(j.rows);
-  } catch(e) { console.error(e); tbody.innerHTML = "<tr><td colspan='7'>Error Loading</td></tr>"; }
+    const tb = document.querySelector("#dataTable tbody");
+    tb.innerHTML="<tr><td colspan='7' align='center'>Loading...</td></tr>";
+    try{
+        let res = await fetch(SCRIPT_URL);
+        let j = await res.json();
+        allData = j.rows;
+        renderTable(allData);
+    }catch(e){ tb.innerHTML="<tr><td colspan='7'>Error loading data</td></tr>"; }
 }
 
 function renderTable(rows){
-  const tbody = document.querySelector("#dataTable tbody");
-  tbody.innerHTML = "";
-  if(rows.length === 0) { tbody.innerHTML = "<tr><td colspan='7' style='text-align:center'>No Records Found</td></tr>"; return; }
-  
-  rows.forEach((r) => {
-    let imgList = (r.ImageURLs || "").split(" || ").filter(Boolean);
-    let thumb = imgList.length ? `<img src="${imgList[0]}" class="thumb" onclick='openPreview(${JSON.stringify(r)})'>` : '<span style="color:#ccc; font-size:11px;">No Img</span>';
-    let cleanDate = r.Date ? r.Date.replace("'", "") : "";
-
-    let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${cleanDate}</td>
-      <td><strong>${escapeHtml(r.Model)}</strong></td>
-      <td>${escapeHtml(r.DefectDetails)}</td>
-      <td style="color:${r.DefectRate > 5 ? 'red' : 'green'}; font-weight:bold;">${escapeHtml(r.DefectRate)}%</td>
-      <td>${escapeHtml(r.RCA)}</td>
-      <td>${thumb}</td>
-      <td>
-        <button class="btn success" style="padding:4px 8px; font-size:12px;" onclick='openPreview(${JSON.stringify(r)})'>PDF</button>
-        <button class="btn secondary" style="padding:4px 8px; font-size:12px;" onclick="editRecord(${r._rowIndex})">✎</button>
-        <button class="btn danger" style="padding:4px 8px; font-size:12px;" onclick="deleteRecord(${r._rowIndex})">🗑</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+    const tb = document.querySelector("#dataTable tbody");
+    tb.innerHTML="";
+    rows.forEach(r=>{
+        let img = (r.ImageURLs||"").split(" || ")[0];
+        let thumb = img ? `<img src="${img}" class="thumb">` : "";
+        let tr = document.createElement("tr");
+        tr.innerHTML=`<td>${r.Date.replace("'","")}</td><td>${r.ODM}</td><td>${r.Model}</td>
+        <td>${r.DefectDetails}</td><td style="color:${r.DefectRate>5?'red':'green'}">${r.DefectRate}%</td>
+        <td>${thumb}</td><td><button class="btn secondary" onclick="editRec(${r._rowIndex})">✎</button></td>`;
+        tb.appendChild(tr);
+    });
 }
 
-function editRecord(rowIndex){
-  let r = allData.find(x => x._rowIndex == rowIndex);
-  if(!r) return;
-  document.getElementById('date').value = r.Date.replace("'", "");
-  document.getElementById('odm').value = r.ODM;
-  document.getElementById('model').value = r.Model;
-  document.getElementById('po').value = r.PO;
-  document.getElementById('item').value = r.Item;
-  document.getElementById('defectDetails').value = r.DefectDetails;
-  document.getElementById('defectRate').value = r.DefectRate;
-  document.getElementById('rca').value = r.RCA;
-  document.getElementById('preparedBy').value = r.PreparedBy;
-  document.getElementById('editRowIndex').value = rowIndex;
-  document.getElementById('saveBtn').innerText = "Update Record";
-  window.scrollTo(0,0);
+function editRec(id){
+    let r = allData.find(x=>x._rowIndex==id);
+    if(!r) return;
+    document.getElementById('date').value = r.Date.replace("'","");
+    document.getElementById('odm').value = r.ODM;
+    document.getElementById('model').value = r.Model;
+    document.getElementById('po').value = r.PO;
+    document.getElementById('item').value = r.Item;
+    document.getElementById('defectDetails').value = r.DefectDetails;
+    document.getElementById('defectRate').value = r.DefectRate;
+    document.getElementById('rca').value = r.RCA;
+    document.getElementById('preparedBy').value = r.PreparedBy;
+    document.getElementById('editRowIndex').value = id;
+    document.getElementById('saveBtn').innerText="Update Record";
+    switchTab('entry');
 }
 
-async function deleteRecord(rowIndex){
-  if(!confirm("Are you sure you want to delete this record?")) return;
-  await fetch(SCRIPT_URL,{ method:"POST", body: JSON.stringify({action:"delete", rowIndex}) });
-  loadData();
+// =========================================================
+// --- PREVIEW & REPORTS ---
+// =========================================================
+
+function getTrendDataForModel(modelName) {
+    let trend = {};
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    allData.forEach(r => {
+        if(r.Model === modelName && r.Date) {
+            let d = new Date(r.Date.replace("'",""));
+            if(!isNaN(d)) {
+                let mKey = months[d.getMonth()] + "'" + d.getFullYear().toString().substr(2);
+                if(!trend[mKey]) trend[mKey] = { rate:0, count:0, qty:0 };
+                trend[mKey].rate = parseFloat(r.DefectRate);
+                trend[mKey].qty = 1000; // Mock production Qty
+                trend[mKey].def = Math.round(1000 * (r.DefectRate/100));
+            }
+        }
+    });
+    return trend;
 }
 
-// --- NEW PREVIEW LOGIC ---
-function openPreview(r){
-    // Text Data
-    document.getElementById('rep_date').innerText = (r.Date || "").replace("'", "") || "-";
-    document.getElementById('rep_gen_date').innerText = "Gen: " + new Date().toLocaleDateString();
-    document.getElementById('rep_prep').innerText = r.PreparedBy || "N/A";
-    document.getElementById('rep_odm').innerText = r.ODM || "N/A";
-    document.getElementById('rep_model').innerText = r.Model || "N/A";
-    document.getElementById('rep_po').innerText = r.PO || "N/A";
-    document.getElementById('rep_item').innerText = r.Item || "N/A";
-    document.getElementById('rep_desc').innerText = r.DefectDetails || "No details provided.";
-    document.getElementById('rep_rate').innerText = (r.DefectRate || 0) + "%";
-    document.getElementById('rep_rca').innerText = r.RCA || "No RCA provided.";
-
-    // Images
-    const imgContainer = document.getElementById('rep_images');
-    imgContainer.innerHTML = "";
-    let imgs = (r.ImageURLs || "").split(" || ").filter(Boolean);
+function generateReport() {
+    const mInput = document.getElementById('reportMonthInput').value;
+    if(!mInput) return alert("Select Month");
     
-    if(imgs.length > 0){
-        imgs.forEach(url => {
-            let div = document.createElement('div');
-            div.className = 'report-img-wrap';
-            let img = document.createElement('img');
-            img.crossOrigin = "Anonymous"; // Crucial for PDF
-            img.src = url;
-            img.className = 'report-img';
-            img.onerror = function() { this.style.display='none'; };
-            div.appendChild(img);
-            imgContainer.appendChild(div);
-        });
-    } else { 
-        imgContainer.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#ccc;'>No images attached.</p>"; 
+    const [yr, mo] = mInput.split('-');
+    currentReportData = allData.filter(r => r.Date.replace("'","").startsWith(`${yr}-${mo}`));
+    
+    if(!currentReportData.length) {
+        document.getElementById('monthlyReportPreview').innerHTML = "<h3 align='center'>No Data Found</h3>";
+        document.getElementById('reportActions').style.display='none';
+        return;
     }
+
+    let html = `<div id="exportWrapper" style="padding:10px;">`;
     
-    document.getElementById('modal').style.display = 'flex';
+    currentReportData.forEach(row => {
+        let trend = getTrendDataForModel(row.Model);
+        let trendKeys = Object.keys(trend).slice(-6); 
+        
+        let tableHeaderHTML = "";
+        let tableRow1HTML = ""; 
+        let tableRow2HTML = ""; 
+        let tableRow3HTML = ""; 
+        
+        trendKeys.forEach(k => {
+            tableHeaderHTML += `<th>${k}</th>`;
+            tableRow1HTML += `<td>${trend[k].qty}</td>`;
+            tableRow2HTML += `<td>${trend[k].def}</td>`;
+            tableRow3HTML += `<td>${trend[k].rate}%</td>`;
+        });
+
+        let imgs = (row.ImageURLs||"").split(" || ").filter(Boolean);
+        let imgHTML = imgs.length ? imgs.slice(0,2).map(url => `<img src="${url}" crossorigin="anonymous" class="slide-img">`).join("") : `<div style="height:150px; background:#eee; display:flex; align-items:center; justify-content:center; color:#888;">No Images</div>`;
+
+        // SLIDE CARD HTML
+        html += `
+        <div class="slide-card">
+            <div class="slide-sidebar"></div>
+            <div class="slide-content">
+                <div class="slide-header">
+                    <h1 class="slide-title">${row.ODM}</h1>
+                    <img src="${base64Logo || LOGO_URL}" class="slide-logo">
+                </div>
+                
+                <div class="slide-grid">
+                    <div>
+                        <div class="info-block">
+                            <div style="font-size:18px;">
+                                ❖ <b>Model :- ${row.Model}</b><br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;Item :- ${row.Item}
+                            </div>
+                        </div>
+
+                        <div class="info-block" style="background:#f9f9f9; padding:10px; border-left:4px solid #0369a1;">
+                            <b style="color:#0369a1">Issues</b><br>
+                            ${row.DefectDetails}
+                        </div>
+
+                        <div class="info-block" style="display:flex; align-items:center;">
+                            <div class="target-icon"></div>
+                            <span class="defect-rate-huge">Rejection Rate % &nbsp; ~${row.DefectRate}%</span>
+                        </div>
+
+                        <table class="mini-table">
+                            <tr><th>Index</th> ${tableHeaderHTML} </tr>
+                            <tr><td style="background:#FCE4D6; font-weight:bold;">Prod</td> ${tableRow1HTML} </tr>
+                            <tr><td style="background:#FCE4D6; font-weight:bold;">Defect</td> ${tableRow2HTML} </tr>
+                            <tr><td style="background:#FCE4D6; font-weight:bold;">Defect %</td> ${tableRow3HTML} </tr>
+                        </table>
+                    </div>
+
+                    <div class="img-section">
+                        <div class="img-label">Defect Images • ${row.DefectDetails.substring(0,15)}...</div>
+                        <div class="img-stack">${imgHTML}</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+    
+    html += `</div>`;
+    document.getElementById('monthlyReportPreview').innerHTML = html;
+    document.getElementById('reportActions').style.display='flex';
 }
 
-function closeModal(){ document.getElementById('modal').style.display = 'none'; }
-
-function downloadPDF(){
-    const element = document.getElementById('printArea');
-    const modelName = document.getElementById('rep_model').innerText;
-    
-    // Better PDF Settings
-    const opt = {
-        margin: 0, 
-        filename: `RCA_Report_${modelName}.pdf`,
+function downloadPDFReport(){
+    const el = document.getElementById('exportWrapper');
+    html2pdf().set({ 
+        margin: [5, 5, 5, 5], 
+        filename:'Report.pdf', 
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save();
+        html2canvas:{ scale:2, useCORS: true }, 
+        jsPDF:{ unit:'mm', format:'a4', orientation:'landscape'},
+        // THIS PREVENTS BREAKING INSIDE ELEMENTS
+        pagebreak: { mode: ['css', 'legacy'] } 
+    }).from(el).save();
 }
 
-document.getElementById('saveBtn').onclick = saveRecord;
-document.getElementById('clearBtn').onclick = clearForm;
-document.getElementById('refreshBtn').onclick = loadData;
+function downloadExcel(){
+    if(!currentReportData.length) return;
+    const ws = XLSX.utils.json_to_sheet(currentReportData.map(r=>({
+        Date:r.Date, ODM:r.ODM, Model:r.Model, Item:r.Item, Issue:r.DefectDetails, Rate:r.DefectRate+"%", RCA:r.RCA
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, "Report_Data.xlsx");
+}
+
+function downloadProfessionalPPT() {
+    if(!currentReportData.length) return;
+    
+    try {
+        let pptx = new PptxGenJS();
+        pptx.layout = 'LAYOUT_16x9';
+
+        pptx.defineSlideMaster({
+            title: "DASHBOARD",
+            background: { color: "FFFFFF" },
+            objects: [
+                { rect: { x: 0, y: 0, w: 0.4, h: "100%", fill: { type: 'solid', color: 'A9D0F5' } } }, 
+                { rect: { x: 0.4, y: 0, w: 0.2, h: "100%", fill: { type: 'solid', color: 'E1F0FB' } } },
+                { image: { data: base64Logo || LOGO_URL, x: 8.5, y: 0.2, w: 1.2, h: 0.6 } }
+            ]
+        });
+
+        currentReportData.forEach(row => {
+            let slide = pptx.addSlide({ masterName: "DASHBOARD" });
+
+            slide.addText(row.ODM, { x: 0.8, y: 0.4, fontSize: 28, color: '003366', bold: true });
+            slide.addText(`❖ Model :- ${row.Model}`, { x: 0.8, y: 1.2, fontSize: 16, color: '000000', bold: true });
+            slide.addText(`      Item :- ${row.Item}`, { x: 0.8, y: 1.5, fontSize: 14, color: '333333' });
+
+            slide.addText("Issues", { x: 1.5, y: 1.9, fontSize: 14, color: '000000', bold: true });
+            slide.addText(row.DefectDetails, { x: 1.5, y: 2.2, w: 4.5, fontSize: 14, color: '333333' });
+
+            // Target Icon
+            slide.addShape(pptx.ShapeType.ellipse, { x:0.8, y:2.5, w:0.8, h:0.8, fill:'40E0D0', line:'none' });
+            slide.addShape(pptx.ShapeType.ellipse, { x:0.95, y:2.65, w:0.5, h:0.5, fill:'none', line:{color:'FFFFFF', width:2} });
+            slide.addShape(pptx.ShapeType.line, { x:1.2, y:2.5, w:0, h:0.8, line:{color:'FFFFFF', width:2} });
+            slide.addShape(pptx.ShapeType.line, { x:0.8, y:2.9, w:0.8, h:0, line:{color:'FFFFFF', width:2} });
+
+            slide.addText(`Rejection Rate %   ~${row.DefectRate}%`, { x: 1.8, y: 2.7, fontSize: 18, color: 'CC0000', bold: true });
+
+            let trend = getTrendDataForModel(row.Model);
+            let labels = Object.keys(trend).slice(-6); 
+            // ENSURE NUMBERS FOR PPT
+            let dataRate = labels.map(k => parseFloat(trend[k].rate) || 0);
+            let dataDef = labels.map(k => parseFloat(trend[k].def) || 0);
+            let dataProd = labels.map(k => parseFloat(trend[k].qty) || 0);
+
+            slide.addText(`${row.Item.toUpperCase()} DEFECT TREND`, { x: 0.8, y: 3.4, w: 5.0, fontSize: 10, color: '666666', bold: true, align: 'center' });
+
+            let chartData = [
+                { name: "Defect Qty", type: pptx.ChartType.bar, data: dataDef, labels: labels },
+                { name: "Defect %", type: pptx.ChartType.line, data: dataRate, labels: labels }
+            ];
+            
+            // Safe Chart Addition
+            try {
+                slide.addChart(pptx.ChartType.bar, chartData, {
+                    x: 0.8, y: 3.6, w: 5.5, h: 2.5,
+                    barDir: 'col', chartColors: ['ED7D31', 'A5A5A5'],
+                    showValue: true, valAxisHidden: true, gridLine: { style: 'none' }
+                });
+            } catch(e) { console.error("Chart Error", e); }
+
+            let tableRows = [
+                [{ text: "Index", options:{fill:'ED7D31', color:'FFFFFF', bold:true} }, ...labels.map(l => ({ text: l, options:{fill:'ED7D31', color:'FFFFFF', bold:true} }))],
+                [{ text: "Prod", options:{fill:'FCE4D6', bold:true} }, ...dataProd.map(v => ({ text: v, options:{fill:'FCE4D6'} }))],
+                [{ text: "Defect", options:{fill:'FCE4D6', bold:true} }, ...dataDef.map(v => ({ text: v, options:{fill:'FCE4D6'} }))],
+                [{ text: "Defect %", options:{fill:'FCE4D6', bold:true} }, ...dataRate.map(v => ({ text: v+"%", options:{fill:'FCE4D6'} }))]
+            ];
+
+            slide.addTable(tableRows, { x: 0.8, y: 6.2, w: 5.5, fontSize: 9, align: 'center', border: { pt: 1, color: 'FFFFFF' } });
+
+            slide.addText("Defect\nImages", { x: 6.5, y: 1.2, w: 1.0, fontSize: 10, bold: true, align: 'right' });
+            slide.addShape(pptx.ShapeType.rect, { x: 7.6, y: 1.2, w: 2.2, h: 0.5, fill: '5B9BD5' });
+            slide.addText("• " + row.DefectDetails.substring(0,20), { x: 7.6, y: 1.2, w: 2.2, h: 0.5, fontSize: 11, color: 'FFFFFF', bold: true, align: 'left', valign: 'middle' });
+
+            // SAFE IMAGE ADDITION
+            let imgs = (row.ImageURLs||"").split(" || ").filter(Boolean);
+            let imgY = 1.9;
+            
+            if(imgs.length > 0) {
+                try { slide.addImage({ path: imgs[0], x: 7.0, y: imgY, w: 2.8, h: 2.2 }); imgY += 2.4; } 
+                catch(e) { console.warn("Image 1 blocked/failed", e); }
+            }
+            if(imgs.length > 1) {
+                try { slide.addImage({ path: imgs[1], x: 7.0, y: imgY, w: 2.8, h: 2.2 }); } 
+                catch(e) { console.warn("Image 2 blocked/failed", e); }
+            }
+
+            slide.addShape(pptx.ShapeType.arc, { x: 9.0, y: 6.5, w: 1.5, h: 1.5, line: { color: '333333', width: 2 } });
+        });
+
+        pptx.writeFile({ fileName: `Professional_Report.pptx` });
+
+    } catch(e) {
+        alert("PPT Generation Error: " + e.message);
+        console.error(e);
+    }
+}
+
+document.getElementById('refreshBtn').onclick=loadData;
 loadData();
 </script>
 </body>
 </html>
-
-
-
