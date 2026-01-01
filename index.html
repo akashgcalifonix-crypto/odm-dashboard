@@ -173,9 +173,9 @@
           <div><label>Root Cause Analysis (RCA)</label><textarea id="rca" rows="3"></textarea></div>
       </div>
       <div style="margin-top:20px;">
-          <button id="saveBtn" class="btn">Save Record</button>
-          <button id="clearBtn" class="btn secondary">Clear Form</button>
-          <button id="refreshBtn" class="btn secondary" style="float:right">Refresh List</button>
+          <button id="saveBtn" type="button" class="btn">Save Record</button>
+          <button id="clearBtn" type="button" class="btn secondary">Clear Form</button>
+          <button id="refreshBtn" type="button" class="btn secondary" style="float:right">Refresh List</button>
       </div>
       <table id="dataTable" class="data-table">
         <thead><tr><th>Date</th><th>Model</th><th>Defect</th><th>Rate%</th><th>Image</th><th>Actions</th></tr></thead>
@@ -263,36 +263,56 @@ function readFilesAndCompress(files) {
 // --- CRUD ACTIONS ---
 async function saveRecord(){
     const btn = document.getElementById('saveBtn');
-    btn.innerText="Saving..."; btn.disabled=true;
-    let imgs = [];
-    const files = document.getElementById('images').files;
-    if(files.length) imgs = await readFilesAndCompress(files);
-
-    const rid = document.getElementById('editRowIndex').value;
-    if(rid && !imgs.length){
-        let old = allData.find(x=>x._rowIndex==rid);
-        if(old && old.ImageURLs) imgs = old.ImageURLs.split(" || ");
+    
+    // VALIDATION
+    if(!document.getElementById('odm').value || !document.getElementById('model').value){
+        alert("Please fill in ODM and Model Name");
+        return;
     }
 
-    const rec = {
-        date: document.getElementById('date').value,
-        odm: document.getElementById('odm').value,
-        model: document.getElementById('model').value,
-        po: document.getElementById('po').value,
-        item: document.getElementById('item').value,
-        defectDetails: document.getElementById('defectDetails').value,
-        defectRate: document.getElementById('defectRate').value,
-        rca: document.getElementById('rca').value,
-        preparedBy: document.getElementById('preparedBy').value,
-        images: imgs
-    };
+    btn.innerText="Saving..."; btn.disabled=true;
+    
+    try {
+        let imgs = [];
+        const files = document.getElementById('images').files;
+        if(files.length) imgs = await readFilesAndCompress(files);
 
-    try{
+        const rid = document.getElementById('editRowIndex').value;
+        
+        // KEEP OLD IMAGES IF EDITING
+        if(rid && !imgs.length){
+            let old = allData.find(x=>x._rowIndex==rid);
+            if(old && old.ImageURLs) imgs = old.ImageURLs.split(" || ");
+        }
+
+        const rec = {
+            date: document.getElementById('date').value,
+            odm: document.getElementById('odm').value,
+            model: document.getElementById('model').value,
+            po: document.getElementById('po').value,
+            item: document.getElementById('item').value,
+            defectDetails: document.getElementById('defectDetails').value,
+            defectRate: document.getElementById('defectRate').value,
+            rca: document.getElementById('rca').value,
+            preparedBy: document.getElementById('preparedBy').value,
+            images: imgs
+        };
+
         let res = await fetch(SCRIPT_URL, { method:"POST", body:JSON.stringify({ action:rid?"update":"create", record:rec, rowIndex:rid }) });
         let j = await res.json();
-        if(j.status==="success"){ alert("Saved!"); clearForm(); loadData(); }
-        else alert("Error: "+j.message);
-    }catch(e){console.error(e); alert("Connection Error");}
+        
+        if(j.status==="success"){ 
+            alert("✅ Saved Successfully!"); 
+            clearForm(); 
+            loadData(); 
+        } else { 
+            alert("Error: "+j.message); 
+        }
+    } catch(e){
+        console.error(e); 
+        alert("Connection Error. Check SCRIPT_URL or Internet.");
+    }
+    
     btn.innerText="Save Record"; btn.disabled=false;
 }
 
@@ -307,6 +327,8 @@ async function deleteRec(id) {
 function editRec(id){
     let r = allData.find(x=>x._rowIndex==id);
     if(!r) return;
+    
+    // Populate Form
     document.getElementById('date').value = r.Date.replace("'","");
     document.getElementById('odm').value = r.ODM;
     document.getElementById('model').value = r.Model;
@@ -316,9 +338,13 @@ function editRec(id){
     document.getElementById('defectRate').value = r.DefectRate;
     document.getElementById('rca').value = r.RCA;
     document.getElementById('preparedBy').value = r.PreparedBy;
+    
+    // Set Hidden Index & Button Text
     document.getElementById('editRowIndex').value = id;
     document.getElementById('saveBtn').innerText="Update Record";
+    
     switchTab('entry');
+    window.scrollTo(0,0);
 }
 
 function clearForm(){
@@ -493,8 +519,6 @@ async function downloadProfessionalPPT() {
             slide.addShape(pptx.ShapeType.line, { x: 0.3, y: 0.9, w: 9.4, h: 0, line: { color: '0369a1', width: 2 } });
 
             // 2. INFO BAR (Top Row) - y: 1.1
-            let infoBg = { color: 'F8F9FA' };
-            // We'll just print text labels horizontally
             let yInfo = 1.1;
             let xPos = 0.3;
             
@@ -542,7 +566,7 @@ async function downloadProfessionalPPT() {
                     let imgOpt = { x: 6.5, y: imgY, w: 3.2, h: 2.2 };
                     if(imgs[i].startsWith("data:")) slide.addImage({ data: imgs[i], ...imgOpt });
                     else slide.addImage({ path: imgs[i], ...imgOpt });
-                    imgY += 2.3; // Move down for next image (if space allows, otherwise it overlaps/goes off)
+                    imgY += 2.3; // Move down for next image
                 } catch(e) { console.log("PPT Img Error"); }
             }
         }
