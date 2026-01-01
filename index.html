@@ -48,7 +48,7 @@
     .report-control-bar { background: #eef2f6; padding: 20px; border-radius: 8px; display: flex; gap: 15px; align-items: end; margin-bottom: 20px; }
     .preview-box { background: white; border: 1px solid #ddd; padding: 40px; min-height: 500px; margin-top: 20px; border-radius: 8px; }
     
-    /* --- SLIDE CARD STYLE (Designed for PDF Page Breaks) --- */
+    /* SLIDE CARD STYLE */
     .slide-card { 
         border: 1px solid #ddd; 
         box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
@@ -58,11 +58,9 @@
         display: flex; 
         overflow: hidden; 
         position: relative;
-        /* CRITICAL FOR PDF: Prevents cutting inside the card */
+        /* PREVENTS PDF CUTTING */
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        height: auto;
-        min-height: 400px;
     }
 
     .slide-sidebar { width: 40px; background: linear-gradient(180deg, #cde4f7 0%, #ffffff 100%); flex-shrink: 0; border-right: 1px solid #eee; }
@@ -81,8 +79,22 @@
     .mini-table th { background: #ED7D31; color: white; padding: 8px; border: 1px solid #fff; }
     .mini-table td { background: #FCE4D6; padding: 8px; border: 1px solid white; color: #333; }
 
+    /* FIXED IMAGE LABEL STYLE: WRAPPING ENABLED */
     .img-section { text-align: center; }
-    .img-label { background: #5B9BD5; color: white; display: inline-block; padding: 5px 15px; font-weight: bold; margin-bottom: 10px; border-radius: 4px; font-size: 12px; }
+    .img-label { 
+        background: #5B9BD5; 
+        color: white; 
+        display: inline-block; 
+        padding: 5px 15px; 
+        font-weight: bold; 
+        margin-bottom: 10px; 
+        border-radius: 4px; 
+        font-size: 12px;
+        /* Allow text wrap */
+        white-space: normal;
+        max-width: 90%;
+        line-height: 1.4;
+    }
     .img-stack { display: flex; flex-direction: column; gap: 10px; align-items: center; }
     .slide-img { width: 100%; max-height: 200px; object-fit: contain; border: 4px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: #333; }
     
@@ -153,7 +165,7 @@
       </div>
 
       <div id="reportActions" style="display:none; justify-content: flex-end; gap:10px; margin-bottom:10px;">
-          <button class="btn ppt" onclick="downloadProfessionalPPT()">📊 Download PPT</button>
+          <button id="btnPPT" class="btn ppt" onclick="downloadProfessionalPPT()">📊 Download PPT</button>
           <button class="btn excel" onclick="downloadExcel()">⬇ Excel</button>
           <button class="btn success" onclick="downloadPDFReport()">⬇ Download PDF</button>
       </div>
@@ -173,7 +185,7 @@ let allData = [];
 let currentReportData = [];
 let base64Logo = "";
 
-// Convert Logo to Base64 to ensure it appears in PDF/PPT
+// Pre-load Logo
 function convertLogoToBase64() {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
@@ -184,6 +196,7 @@ function convertLogoToBase64() {
         ctx.drawImage(img, 0, 0);
         base64Logo = canvas.toDataURL('image/png');
     };
+    img.onerror = function() { console.warn("Logo blocked."); };
     img.src = LOGO_URL;
 }
 convertLogoToBase64();
@@ -312,7 +325,7 @@ function getTrendDataForModel(modelName) {
                 let mKey = months[d.getMonth()] + "'" + d.getFullYear().toString().substr(2);
                 if(!trend[mKey]) trend[mKey] = { rate:0, count:0, qty:0 };
                 trend[mKey].rate = parseFloat(r.DefectRate);
-                trend[mKey].qty = 1000; // Mock production Qty
+                trend[mKey].qty = 1000; 
                 trend[mKey].def = Math.round(1000 * (r.DefectRate/100));
             }
         }
@@ -354,7 +367,9 @@ function generateReport() {
         let imgs = (row.ImageURLs||"").split(" || ").filter(Boolean);
         let imgHTML = imgs.length ? imgs.slice(0,2).map(url => `<img src="${url}" crossorigin="anonymous" class="slide-img">`).join("") : `<div style="height:150px; background:#eee; display:flex; align-items:center; justify-content:center; color:#888;">No Images</div>`;
 
-        // SLIDE CARD HTML
+        // FULL TEXT IN PREVIEW (NO SUBSTRING)
+        let defectText = row.DefectDetails || "No Details";
+
         html += `
         <div class="slide-card">
             <div class="slide-sidebar"></div>
@@ -375,7 +390,7 @@ function generateReport() {
 
                         <div class="info-block" style="background:#f9f9f9; padding:10px; border-left:4px solid #0369a1;">
                             <b style="color:#0369a1">Issues</b><br>
-                            ${row.DefectDetails}
+                            ${defectText}
                         </div>
 
                         <div class="info-block" style="display:flex; align-items:center;">
@@ -392,7 +407,7 @@ function generateReport() {
                     </div>
 
                     <div class="img-section">
-                        <div class="img-label">Defect Images • ${row.DefectDetails.substring(0,15)}...</div>
+                        <div class="img-label">Defect Images • ${defectText}</div>
                         <div class="img-stack">${imgHTML}</div>
                     </div>
                 </div>
@@ -413,7 +428,6 @@ function downloadPDFReport(){
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas:{ scale:2, useCORS: true }, 
         jsPDF:{ unit:'mm', format:'a4', orientation:'landscape'},
-        // THIS PREVENTS BREAKING INSIDE ELEMENTS
         pagebreak: { mode: ['css', 'legacy'] } 
     }).from(el).save();
 }
@@ -428,8 +442,10 @@ function downloadExcel(){
     XLSX.writeFile(wb, "Report_Data.xlsx");
 }
 
-function downloadProfessionalPPT() {
+async function downloadProfessionalPPT() {
     if(!currentReportData.length) return;
+    const btn = document.getElementById('btnPPT');
+    btn.innerText = "Processing...";
     
     try {
         let pptx = new PptxGenJS();
@@ -441,21 +457,26 @@ function downloadProfessionalPPT() {
             objects: [
                 { rect: { x: 0, y: 0, w: 0.4, h: "100%", fill: { type: 'solid', color: 'A9D0F5' } } }, 
                 { rect: { x: 0.4, y: 0, w: 0.2, h: "100%", fill: { type: 'solid', color: 'E1F0FB' } } },
-                { image: { data: base64Logo || LOGO_URL, x: 8.5, y: 0.2, w: 1.2, h: 0.6 } }
-            ]
+                (base64Logo ? { image: { data: base64Logo, x: 8.5, y: 0.2, w: 1.2, h: 0.6 } } : null)
+            ].filter(Boolean)
         });
 
-        currentReportData.forEach(row => {
+        // Loop rows
+        for(let row of currentReportData) {
             let slide = pptx.addSlide({ masterName: "DASHBOARD" });
 
-            slide.addText(row.ODM, { x: 0.8, y: 0.4, fontSize: 28, color: '003366', bold: true });
-            slide.addText(`❖ Model :- ${row.Model}`, { x: 0.8, y: 1.2, fontSize: 16, color: '000000', bold: true });
-            slide.addText(`      Item :- ${row.Item}`, { x: 0.8, y: 1.5, fontSize: 14, color: '333333' });
+            slide.addText(row.ODM || "ODM", { x: 0.8, y: 0.4, fontSize: 28, color: '003366', bold: true });
+            slide.addText(`❖ Model :- ${row.Model||""}`, { x: 0.8, y: 1.2, fontSize: 16, color: '000000', bold: true });
+            slide.addText(`      Item :- ${row.Item||""}`, { x: 0.8, y: 1.5, fontSize: 14, color: '333333' });
 
             slide.addText("Issues", { x: 1.5, y: 1.9, fontSize: 14, color: '000000', bold: true });
-            slide.addText(row.DefectDetails, { x: 1.5, y: 2.2, w: 4.5, fontSize: 14, color: '333333' });
+            
+            // FULL TEXT + WRAPPING (Fixes Text Cutting)
+            slide.addText(row.DefectDetails || "No details", { 
+                x: 1.5, y: 2.2, w: 4.8, h: 0.8,
+                fontSize: 14, color: '333333', wrap: true, valign: 'top' 
+            });
 
-            // Target Icon
             slide.addShape(pptx.ShapeType.ellipse, { x:0.8, y:2.5, w:0.8, h:0.8, fill:'40E0D0', line:'none' });
             slide.addShape(pptx.ShapeType.ellipse, { x:0.95, y:2.65, w:0.5, h:0.5, fill:'none', line:{color:'FFFFFF', width:2} });
             slide.addShape(pptx.ShapeType.line, { x:1.2, y:2.5, w:0, h:0.8, line:{color:'FFFFFF', width:2} });
@@ -463,28 +484,22 @@ function downloadProfessionalPPT() {
 
             slide.addText(`Rejection Rate %   ~${row.DefectRate}%`, { x: 1.8, y: 2.7, fontSize: 18, color: 'CC0000', bold: true });
 
+            // Charts & Tables
             let trend = getTrendDataForModel(row.Model);
             let labels = Object.keys(trend).slice(-6); 
-            // ENSURE NUMBERS FOR PPT
             let dataRate = labels.map(k => parseFloat(trend[k].rate) || 0);
             let dataDef = labels.map(k => parseFloat(trend[k].def) || 0);
             let dataProd = labels.map(k => parseFloat(trend[k].qty) || 0);
 
-            slide.addText(`${row.Item.toUpperCase()} DEFECT TREND`, { x: 0.8, y: 3.4, w: 5.0, fontSize: 10, color: '666666', bold: true, align: 'center' });
+            slide.addText(`${(row.Item||"").toUpperCase()} DEFECT TREND`, { x: 0.8, y: 3.4, w: 5.0, fontSize: 10, color: '666666', bold: true, align: 'center' });
 
-            let chartData = [
-                { name: "Defect Qty", type: pptx.ChartType.bar, data: dataDef, labels: labels },
-                { name: "Defect %", type: pptx.ChartType.line, data: dataRate, labels: labels }
-            ];
-            
-            // Safe Chart Addition
             try {
-                slide.addChart(pptx.ChartType.bar, chartData, {
-                    x: 0.8, y: 3.6, w: 5.5, h: 2.5,
-                    barDir: 'col', chartColors: ['ED7D31', 'A5A5A5'],
-                    showValue: true, valAxisHidden: true, gridLine: { style: 'none' }
-                });
-            } catch(e) { console.error("Chart Error", e); }
+                let chartData = [
+                    { name: "Defect Qty", type: pptx.ChartType.bar, data: dataDef, labels: labels },
+                    { name: "Defect %", type: pptx.ChartType.line, data: dataRate, labels: labels }
+                ];
+                slide.addChart(pptx.ChartType.bar, chartData, { x: 0.8, y: 3.6, w: 5.5, h: 2.5, barDir: 'col', chartColors: ['ED7D31', 'A5A5A5'], showValue: true, valAxisHidden: true, gridLine: { style: 'none' } });
+            } catch(e){}
 
             let tableRows = [
                 [{ text: "Index", options:{fill:'ED7D31', color:'FFFFFF', bold:true} }, ...labels.map(l => ({ text: l, options:{fill:'ED7D31', color:'FFFFFF', bold:true} }))],
@@ -496,30 +511,42 @@ function downloadProfessionalPPT() {
             slide.addTable(tableRows, { x: 0.8, y: 6.2, w: 5.5, fontSize: 9, align: 'center', border: { pt: 1, color: 'FFFFFF' } });
 
             slide.addText("Defect\nImages", { x: 6.5, y: 1.2, w: 1.0, fontSize: 10, bold: true, align: 'right' });
-            slide.addShape(pptx.ShapeType.rect, { x: 7.6, y: 1.2, w: 2.2, h: 0.5, fill: '5B9BD5' });
-            slide.addText("• " + row.DefectDetails.substring(0,20), { x: 7.6, y: 1.2, w: 2.2, h: 0.5, fontSize: 11, color: 'FFFFFF', bold: true, align: 'left', valign: 'middle' });
+            slide.addShape(pptx.ShapeType.rect, { x: 7.6, y: 1.2, w: 2.2, h: 0.6, fill: '5B9BD5' });
+            
+            // FULL TEXT + WRAP FOR IMAGE LABEL
+            slide.addText("• " + (row.DefectDetails || ""), { 
+                x: 7.6, y: 1.2, w: 2.2, h: 0.6, 
+                fontSize: 11, color: 'FFFFFF', bold: true, align: 'left', valign: 'middle', wrap: true 
+            });
 
-            // SAFE IMAGE ADDITION
+            // HANDLE IMAGES (Base64)
             let imgs = (row.ImageURLs||"").split(" || ").filter(Boolean);
             let imgY = 1.9;
             
-            if(imgs.length > 0) {
-                try { slide.addImage({ path: imgs[0], x: 7.0, y: imgY, w: 2.8, h: 2.2 }); imgY += 2.4; } 
-                catch(e) { console.warn("Image 1 blocked/failed", e); }
-            }
-            if(imgs.length > 1) {
-                try { slide.addImage({ path: imgs[1], x: 7.0, y: imgY, w: 2.8, h: 2.2 }); } 
-                catch(e) { console.warn("Image 2 blocked/failed", e); }
+            for(let i=0; i<Math.min(imgs.length, 2); i++) {
+                try {
+                    // Convert URL to Base64 manually before PPT logic to prevent crash
+                    // NOTE: If URL is Data URI, it's fine. If HTTP, we might need simple addImage with data check.
+                    // pptxgenjs handles data-uris natively and robustly.
+                    if(imgs[i].startsWith("data:image")) {
+                         slide.addImage({ data: imgs[i], x: 7.0, y: imgY, w: 2.8, h: 2.2 });
+                    } else {
+                         slide.addImage({ path: imgs[i], x: 7.0, y: imgY, w: 2.8, h: 2.2 });
+                    }
+                    imgY += 2.4;
+                } catch(e) { console.log("Skipping bad image"); }
             }
 
             slide.addShape(pptx.ShapeType.arc, { x: 9.0, y: 6.5, w: 1.5, h: 1.5, line: { color: '333333', width: 2 } });
+        }
+
+        pptx.writeFile({ fileName: `Professional_Report.pptx` }).then(() => {
+            btn.innerText = "📊 Download PPT";
         });
 
-        pptx.writeFile({ fileName: `Professional_Report.pptx` });
-
     } catch(e) {
-        alert("PPT Generation Error: " + e.message);
-        console.error(e);
+        alert("PPT Error: " + e.message);
+        btn.innerText = "📊 Download PPT";
     }
 }
 
