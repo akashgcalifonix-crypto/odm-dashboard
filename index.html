@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Incoming Rejection Tracker</title>
+  <title>Landscape Defect Report</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   
   <!-- LIBRARIES -->
@@ -11,81 +11,131 @@
   <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; }
-    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1100px; margin: auto; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f0f2f5; color: #333; }
+    .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 1200px; margin: auto; }
     
-    /* TABS */
-    .tab-nav { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
-    .tab-btn { background: none; border: none; padding: 12px 25px; font-size: 15px; font-weight: bold; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s; }
-    .tab-btn.active { color: #0369a1; border-bottom-color: #0369a1; background: #f8fbff; }
-    .tab-content { display: none; animation: fadeIn 0.4s; }
-    .tab-content.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* HEADER */
-    .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
-    .header-row h2 { color: #0369a1; margin: 0; font-size: 24px; }
+    /* --- HEADER & TABS --- */
+    .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
     .app-logo { height: 50px; object-fit: contain; }
+    
+    .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
+    .tab-btn { background: none; border: none; padding: 10px 20px; font-size: 15px; font-weight: 600; color: #666; cursor: pointer; border-bottom: 3px solid transparent; }
+    .tab-btn.active { color: #0369a1; border-bottom-color: #0369a1; background: #f9fbfd; }
+    .tab-content { display: none; animation: fadeIn 0.3s; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* FORM & BUTTONS */
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
-    label { font-weight: bold; font-size: 12px; color: #555; display: block; margin-bottom: 5px; }
-    input, textarea, select { padding: 10px; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fafafa; }
-    .btn { background: #0369a1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    /* --- FORM --- */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px; }
+    label { font-weight: 600; font-size: 12px; color: #555; display: block; margin-bottom: 5px; }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; background: #fafafa; }
+    input:focus, textarea:focus { border-color: #0369a1; outline: none; background: #fff; }
+    
+    /* --- BUTTONS --- */
+    .btn { background: #0369a1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn:hover { background: #025686; transform: translateY(-1px); }
     .btn.secondary { background: #6b7280; }
+    .btn.danger { background: #dc3545; }
     .btn.ppt { background: #D24726; } 
     .btn.excel { background: #217346; }
     .btn.success { background: #28a745; }
-    .btn.danger { background: #dc3545; }
-    
-    /* TABLE */
+
+    /* --- DATA TABLE --- */
     table.data-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; font-size: 13px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .data-table th, .data-table td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; vertical-align: middle; }
-    .data-table th { background: #0369a1; color: white; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    .data-table th { background: #0369a1; color: white; padding: 12px; text-align: left; text-transform: uppercase; font-size: 11px; }
+    .data-table td { border-bottom: 1px solid #eee; padding: 12px; }
     .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
 
-    /* MODAL (FOR PREVIEW) */
-    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index: 1000; }
-    .modal-content { background:white; width: 900px; max-width: 95%; height: 90vh; border-radius:8px; display: flex; flex-direction: column; overflow: hidden; }
-    .modal-header { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display:flex; justify-content:space-between; align-items:center; }
-    .modal-body { padding: 20px; overflow-y: auto; flex: 1; background: #525659; display: flex; justify-content: center; }
+    /* --- PREVIEW MODAL (LANDSCAPE) --- */
+    .modal { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index: 1000; backdrop-filter: blur(4px); }
+    .modal-content { background:white; width: 95%; max-width: 1300px; height: 90vh; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; }
+    .modal-header { padding: 15px; background: #f1f1f1; border-bottom: 1px solid #ccc; display:flex; justify-content:space-between; align-items:center; }
+    .modal-body { flex: 1; overflow-y: auto; background: #333; padding: 40px; display: flex; justify-content: center; align-items: flex-start; }
 
-    /* REPORT STYLE (For Preview & PDF) */
-    .report-control-bar { background: #eef2f6; padding: 20px; border-radius: 8px; display: flex; gap: 15px; align-items: end; margin-bottom: 20px; }
-    .preview-box { background: white; border: 1px solid #ddd; padding: 40px; min-height: 500px; margin-top: 20px; border-radius: 8px; }
-    
-    .slide-card { 
-        border: 1px solid #ddd; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
-        margin-bottom: 30px; 
-        padding: 0; 
-        background: white; 
-        display: flex; 
-        overflow: hidden; 
+    /* ========================================= */
+    /* === LANDSCAPE REPORT DESIGN (CSS) === */
+    /* ========================================= */
+    .report-slide {
+        background: white;
+        width: 1000px;  /* Fixed width to simulate 16:9 slide */
+        height: 562px; /* Fixed height to simulate 16:9 slide */
+        padding: 30px;
+        box-sizing: border-box;
+        box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        font-family: 'Segoe UI', Arial, sans-serif;
         position: relative;
-        page-break-inside: avoid !important;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 40px; /* Space between slides in preview */
     }
-    .slide-sidebar { width: 40px; background: linear-gradient(180deg, #cde4f7 0%, #ffffff 100%); flex-shrink: 0; border-right: 1px solid #eee; }
-    .slide-content { padding: 30px; flex: 1; position: relative; }
-    .slide-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-    .slide-title { font-size: 28px; color: #003366; font-weight: bold; margin: 0; }
-    .slide-logo { height: 40px; object-fit: contain; }
-    .slide-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 30px; }
-    
-    .info-block { margin-bottom: 15px; }
-    .defect-rate-huge { color: #D93025; font-size: 22px; font-weight: bold; margin-left: 10px; }
-    
-    .mini-table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 20px; text-align: center; }
-    .mini-table th { background: #ED7D31; color: white; padding: 8px; border: 1px solid #fff; }
-    .mini-table td { background: #FCE4D6; padding: 8px; border: 1px solid white; color: #333; }
 
-    .img-section { text-align: center; }
-    .img-label { background: #5B9BD5; color: white; display: inline-block; padding: 5px 15px; font-weight: bold; margin-bottom: 10px; border-radius: 4px; font-size: 12px; white-space: normal; max-width: 90%; }
-    .img-stack { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-    .slide-img { width: 100%; max-height: 200px; object-fit: contain; border: 4px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: #333; }
+    /* Header */
+    .rep-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0369a1; padding-bottom: 10px; margin-bottom: 15px; height: 60px; }
+    .rep-logo { height: 50px; object-fit: contain; }
+    .rep-title h1 { color: #0369a1; font-size: 22px; margin: 0; text-transform: uppercase; font-weight: 800; text-align: right; }
+    .rep-title p { color: #666; font-size: 11px; margin: 0; text-align: right; }
+
+    /* Info Bar (Horizontal) */
+    .rep-info-bar { 
+        display: flex; gap: 15px; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 20px; 
+        justify-content: space-between;
+    }
+    .info-item { display: flex; flex-direction: column; font-size: 11px; }
+    .info-item span:first-child { font-weight: bold; color: #666; margin-bottom: 2px; text-transform: uppercase; }
+    .info-item span:last-child { font-weight: bold; color: #000; font-size: 13px; }
+
+    /* Main Layout (Split) */
+    .rep-body { display: flex; gap: 25px; flex: 1; overflow: hidden; }
     
-    .target-icon { width: 40px; height: 40px; background: radial-gradient(circle, #e74c3c 15%, transparent 15%, transparent 30%, #e74c3c 30%, #e74c3c 45%, transparent 45%, transparent 100%); border: 2px solid #e74c3c; border-radius: 50%; display: inline-block; vertical-align: middle; }
+    /* Left Column (Text) */
+    .rep-left { flex: 2; display: flex; flex-direction: column; gap: 15px; }
+    
+    /* Right Column (Visuals) */
+    .rep-right { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+
+    /* Sections */
+    .rep-sec-head {
+        background: #eef6fb;
+        border-left: 4px solid #0369a1;
+        padding: 6px 10px;
+        font-weight: 700;
+        color: #005a8d;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .rep-text-box {
+        font-size: 12px;
+        line-height: 1.5;
+        color: #333;
+        background: #fff;
+        height: 100%;
+    }
+
+    /* Rate Box */
+    .rep-rate-card {
+        background: #0369a1;
+        color: white;
+        padding: 15px;
+        border-radius: 6px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .rep-rate-lbl { font-size: 10px; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; }
+    .rep-rate-val { font-size: 36px; font-weight: 800; line-height: 1.1; margin-top: 5px; }
+
+    /* Images */
+    .rep-img-box {
+        flex: 1;
+        background: #f9f9f9;
+        border: 1px dashed #ccc;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+    }
+    .rep-img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
   </style>
 </head>
@@ -94,13 +144,13 @@
 
 <div class="card">
   <div class="header-row">
-      <h2>Incoming Rejection Tracker</h2>
+      <h2 style="color:#0369a1; margin:0;">Incoming Rejection Tracker</h2>
       <img id="mainLogo" src="https://i.postimg.cc/5y7SN4xc/logo.png" class="app-logo" crossorigin="anonymous" alt="Logo">
   </div>
 
   <div class="tab-nav">
       <button class="tab-btn active" onclick="switchTab('entry')">Daily Entry</button>
-      <button class="tab-btn" onclick="switchTab('report')">Monthly Report</button>
+      <button class="tab-btn" onclick="switchTab('report')">Monthly Report (Landscape)</button>
   </div>
 
   <!-- ENTRY TAB -->
@@ -109,49 +159,49 @@
       <div class="form-grid">
           <div><label>Date</label><input id="date" type="date"></div>
           <div><label>ODM Name</label><input id="odm" placeholder="e.g. Glanto"></div>
-          <div><label>Model</label><input id="model" placeholder="e.g. AD 141/148"></div>
-          <div><label>PO Number</label><input id="po"></div>
+          <div><label>Model No.</label><input id="model" placeholder="e.g. AD 311 Pro"></div>
+          <div><label>PO Number</label><input id="po" placeholder="e.g. 42724692"></div>
       </div>
       <div class="form-grid">
-          <div><label>Item Name</label><input id="item" placeholder="e.g. Light Guide"></div>
+          <div><label>Item Name</label><input id="item" placeholder="e.g. Back cover"></div>
           <div><label>Defect Rate %</label><input id="defectRate" type="number" step="0.01" placeholder="%"></div>
-          <div><label>Prepared By</label><input id="preparedBy"></div>
-          <div><label>Upload Images (Max 3)</label><input id="images" type="file" accept="image/*" multiple></div>
+          <div><label>Prepared By</label><input id="preparedBy" placeholder="e.g. Vijay"></div>
+          <div><label>Images (Max 2)</label><input id="images" type="file" accept="image/*" multiple></div>
       </div>
       <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-          <div><label>Defect Details</label><textarea id="defectDetails" rows="3"></textarea></div>
-          <div><label>RCA / Remarks</label><textarea id="rca" rows="3"></textarea></div>
+          <div><label>Defect Description & Observation</label><textarea id="defectDetails" rows="3"></textarea></div>
+          <div><label>Root Cause Analysis (RCA)</label><textarea id="rca" rows="3"></textarea></div>
       </div>
       <div style="margin-top:20px;">
           <button id="saveBtn" class="btn">Save Record</button>
           <button id="clearBtn" class="btn secondary">Clear Form</button>
           <button id="refreshBtn" class="btn secondary" style="float:right">Refresh List</button>
       </div>
-
       <table id="dataTable" class="data-table">
-        <thead><tr><th>Date</th><th>ODM</th><th>Model</th><th>Defect</th><th>Rate%</th><th>Image</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Date</th><th>Model</th><th>Defect</th><th>Rate%</th><th>Image</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
   </div>
 
   <!-- REPORT TAB -->
   <div id="reportTab" class="tab-content">
-      <div class="report-control-bar">
-          <div style="flex:1">
-              <label>Select Month & Year</label>
-              <input type="month" id="reportMonthInput">
+      <div class="card" style="background:#f8f9fa; border:1px solid #eee;">
+          <div style="display:flex; gap:15px; align-items:end;">
+              <div style="flex:1;">
+                  <label>Select Month for Report</label>
+                  <input type="month" id="reportMonthInput">
+              </div>
+              <button class="btn" onclick="generatePreview()">🔍 Preview Landscape Slides</button>
           </div>
-          <button class="btn" onclick="generateReport()">🔍 Preview Report</button>
       </div>
 
-      <div id="reportActions" style="display:none; justify-content: flex-end; gap:10px; margin-bottom:10px;">
-          <button id="btnPPT" class="btn ppt">📊 Download PPT</button>
-          <button id="btnExcel" class="btn excel">⬇ Excel</button>
+      <div id="reportActions" style="display:none; justify-content: flex-end; gap:10px; margin-top:20px;">
+          <button id="btnPPT" class="btn ppt">📊 Download PPT (Landscape)</button>
           <button id="btnPDF" class="btn success">⬇ Download PDF</button>
       </div>
 
-      <div id="monthlyReportPreview" class="preview-box">
-          <div style="text-align:center; color:#999; margin-top:50px;">Select Month to Preview</div>
+      <div id="previewContainer" style="margin-top:20px; overflow-x: auto; text-align: center;">
+          <!-- Preview slides will appear here -->
       </div>
   </div>
 </div>
@@ -160,11 +210,11 @@
 <div id="previewModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 style="margin:0">Quick Preview</h3>
-            <button onclick="closeModal()" style="border:none;background:none;font-size:20px;cursor:pointer;">&times;</button>
+            <h3 style="margin:0">📄 Landscape Report Preview</h3>
+            <button onclick="closeModal()" style="border:none;background:none;font-size:24px;cursor:pointer;">&times;</button>
         </div>
         <div class="modal-body">
-            <div id="modalContent" style="width:100%; background:white; padding:20px;"></div>
+            <div id="modalContent"></div>
         </div>
     </div>
 </div>
@@ -183,13 +233,11 @@ function convertLogoToBase64() {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.onload = function(){
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width; canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        base64Logo = canvas.toDataURL('image/png');
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        base64Logo = c.toDataURL('image/png');
     };
-    img.onerror = function() { console.warn("Logo blocked."); };
     img.src = LOGO_URL;
 }
 
@@ -212,8 +260,7 @@ function readFilesAndCompress(files) {
   })));
 }
 
-// --- CORE ACTIONS ---
-
+// --- CRUD ACTIONS ---
 async function saveRecord(){
     const btn = document.getElementById('saveBtn');
     btn.innerText="Saving..."; btn.disabled=true;
@@ -250,12 +297,10 @@ async function saveRecord(){
 }
 
 async function deleteRec(id) {
-    if(!confirm("Are you sure you want to DELETE this record?")) return;
+    if(!confirm("Delete this record?")) return;
     try {
-        let res = await fetch(SCRIPT_URL, { method:"POST", body:JSON.stringify({ action:"delete", rowIndex:id }) });
-        let j = await res.json();
-        if(j.status==="success"){ alert("Deleted!"); loadData(); }
-        else alert("Error: "+j.message);
+        await fetch(SCRIPT_URL, { method:"POST", body:JSON.stringify({ action:"delete", rowIndex:id }) });
+        alert("Deleted!"); loadData();
     } catch(e) { alert("Delete failed"); }
 }
 
@@ -274,7 +319,6 @@ function editRec(id){
     document.getElementById('editRowIndex').value = id;
     document.getElementById('saveBtn').innerText="Update Record";
     switchTab('entry');
-    window.scrollTo(0,0);
 }
 
 function clearForm(){
@@ -286,33 +330,27 @@ function clearForm(){
 async function loadData(){
     const tb = document.querySelector("#dataTable tbody");
     if(!tb) return;
-    tb.innerHTML="<tr><td colspan='7' align='center'>Loading...</td></tr>";
+    tb.innerHTML="<tr><td colspan='6' align='center'>Loading...</td></tr>";
     try{
         let res = await fetch(SCRIPT_URL);
         let j = await res.json();
         allData = j.rows;
         renderTable(allData);
-    }catch(e){ 
-        console.error(e); 
-        tb.innerHTML="<tr><td colspan='7'>Error loading data</td></tr>"; 
-    }
+    }catch(e){ tb.innerHTML="<tr><td colspan='6'>Error loading data</td></tr>"; }
 }
 
 function renderTable(rows){
     const tb = document.querySelector("#dataTable tbody");
-    if(!tb) return;
     tb.innerHTML="";
-    if(!rows || rows.length === 0) { tb.innerHTML="<tr><td colspan='7'>No Data</td></tr>"; return; }
+    if(!rows || rows.length === 0) { tb.innerHTML="<tr><td colspan='6'>No Data</td></tr>"; return; }
     
     rows.forEach(r=>{
         let img = (r.ImageURLs||"").split(" || ")[0];
         let thumb = img ? `<img src="${img}" class="thumb">` : "";
         let tr = document.createElement("tr");
         
-        // Added 3 Action Buttons: Preview, Edit, Delete
         tr.innerHTML=`
             <td>${r.Date.replace("'","")}</td>
-            <td>${r.ODM}</td>
             <td>${r.Model}</td>
             <td>${r.DefectDetails.substring(0,30)}...</td>
             <td style="color:${r.DefectRate>5?'red':'green'}">${r.DefectRate}%</td>
@@ -326,138 +364,104 @@ function renderTable(rows){
     });
 }
 
+// --- LANDSCAPE HTML GENERATOR ---
+function generateSlideHTML(r) {
+    let imgs = (r.ImageURLs||"").split(" || ").filter(Boolean);
+    let img1 = imgs[0] ? `<img src="${imgs[0]}" crossorigin="anonymous" class="rep-img">` : '<span style="color:#ccc; font-size:12px;">No Image</span>';
+    let img2 = imgs[1] ? `<img src="${imgs[1]}" crossorigin="anonymous" class="rep-img">` : '';
+
+    return `
+    <div class="report-slide">
+        <!-- HEADER -->
+        <div class="rep-header">
+            <img src="${base64Logo || LOGO_URL}" class="rep-logo">
+            <div class="rep-title">
+                <h1>DEFECT ANALYSIS REPORT</h1>
+                <p>Quality Assurance Dept.</p>
+            </div>
+        </div>
+
+        <!-- INFO BAR -->
+        <div class="rep-info-bar">
+            <div class="info-item"><span>ODM Name</span><span>${r.ODM}</span></div>
+            <div class="info-item"><span>Model No.</span><span>${r.Model}</span></div>
+            <div class="info-item"><span>Item Name</span><span>${r.Item}</span></div>
+            <div class="info-item"><span>PO Number</span><span>${r.PO}</span></div>
+            <div class="info-item"><span>Report Date</span><span>${r.Date.replace("'","")}</span></div>
+            <div class="info-item"><span>Prepared By</span><span>${r.PreparedBy}</span></div>
+        </div>
+
+        <!-- MAIN BODY (SPLIT) -->
+        <div class="rep-body">
+            <!-- LEFT (TEXT) -->
+            <div class="rep-left">
+                <div>
+                    <div class="rep-sec-head">1. Defect Description & Observation</div>
+                    <div class="rep-text-box">${r.DefectDetails}</div>
+                </div>
+                <div>
+                    <div class="rep-sec-head">2. Root Cause Analysis (RCA)</div>
+                    <div class="rep-text-box">${r.RCA}</div>
+                </div>
+            </div>
+
+            <!-- RIGHT (VISUALS) -->
+            <div class="rep-right">
+                <!-- Rate Card -->
+                <div class="rep-rate-card">
+                    <div class="rep-rate-lbl">Defect Rate</div>
+                    <div class="rep-rate-val">${r.DefectRate}%</div>
+                </div>
+                <!-- Images -->
+                <div class="rep-img-box">${img1}</div>
+                ${img2 ? `<div class="rep-img-box">${img2}</div>` : ''}
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+// --- PREVIEW FUNCTIONS ---
 function previewSingle(id) {
     let r = allData.find(x => x._rowIndex == id);
     if(!r) return;
-    
-    // Quick generate HTML for modal
-    let trend = getTrendDataForModel(r.Model);
-    let html = generateSlideHTML(r, trend);
-    
-    document.getElementById('modalContent').innerHTML = html;
+    document.getElementById('modalContent').innerHTML = generateSlideHTML(r);
     document.getElementById('previewModal').style.display = 'flex';
 }
 
-function closeModal() {
-    document.getElementById('previewModal').style.display = 'none';
-}
-
-// --- HELPER FOR SLIDE GENERATION (Shared by Preview & Report) ---
-function generateSlideHTML(row, trend) {
-    let trendKeys = Object.keys(trend).slice(-6);
-    let th="", tr1="", tr2="", tr3="";
-    trendKeys.forEach(k => {
-        th += `<th>${k}</th>`;
-        tr1 += `<td>${trend[k].qty}</td>`;
-        tr2 += `<td>${trend[k].def}</td>`;
-        tr3 += `<td>${trend[k].rate}%</td>`;
-    });
-
-    let imgs = (row.ImageURLs||"").split(" || ").filter(Boolean);
-    let imgHTML = imgs.length ? imgs.slice(0,2).map(url => `<img src="${url}" crossorigin="anonymous" class="slide-img">`).join("") : `<div style="padding:20px; color:#999">No Images</div>`;
-
-    return `
-    <div class="slide-card">
-        <div class="slide-sidebar"></div>
-        <div class="slide-content">
-            <div class="slide-header">
-                <h1 class="slide-title">${row.ODM}</h1>
-                <img src="${base64Logo || LOGO_URL}" class="slide-logo">
-            </div>
-            <div class="slide-grid">
-                <div>
-                    <div class="info-block" style="font-size:16px;">
-                        ❖ <b>Model :- ${row.Model}</b><br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;Item :- ${row.Item}
-                    </div>
-                    <div class="info-block" style="background:#f9f9f9; padding:10px; border-left:4px solid #0369a1;">
-                        <b style="color:#0369a1">Issues</b><br>${row.DefectDetails}
-                    </div>
-                    <div class="info-block" style="display:flex; align-items:center;">
-                        <div class="target-icon"></div>
-                        <span class="defect-rate-huge">Rejection Rate % &nbsp; ~${row.DefectRate}%</span>
-                    </div>
-                    <table class="mini-table">
-                        <tr><th>Index</th> ${th} </tr>
-                        <tr><td>Prod</td> ${tr1} </tr>
-                        <tr><td>Defect</td> ${tr2} </tr>
-                        <tr><td>Defect %</td> ${tr3} </tr>
-                    </table>
-                </div>
-                <div class="img-section">
-                    <div class="img-label">${row.DefectDetails}</div>
-                    <div class="img-stack">${imgHTML}</div>
-                </div>
-            </div>
-        </div>
-    </div>`;
-}
-
-// --- REPORT LOGIC ---
-
-function getTrendDataForModel(modelName) {
-    let trend = {};
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    allData.forEach(r => {
-        if(r.Model === modelName && r.Date) {
-            let d = new Date(r.Date.replace("'",""));
-            if(!isNaN(d)) {
-                let mKey = months[d.getMonth()] + "'" + d.getFullYear().toString().substr(2);
-                if(!trend[mKey]) trend[mKey] = { rate:0, count:0, qty:0 };
-                trend[mKey].rate = parseFloat(r.DefectRate);
-                trend[mKey].qty = 1000; 
-                trend[mKey].def = Math.round(1000 * (r.DefectRate/100));
-            }
-        }
-    });
-    return trend;
-}
-
-function generateReport() {
+function generatePreview() {
     const mInput = document.getElementById('reportMonthInput').value;
     if(!mInput) return alert("Select Month");
     const [yr, mo] = mInput.split('-');
     currentReportData = allData.filter(r => r.Date.replace("'","").startsWith(`${yr}-${mo}`));
     
     if(!currentReportData.length) {
-        document.getElementById('monthlyReportPreview').innerHTML = "<h3 align='center'>No Data Found</h3>";
+        document.getElementById('previewContainer').innerHTML = "<h3 align='center'>No Data Found</h3>";
         document.getElementById('reportActions').style.display='none';
         return;
     }
 
-    let html = `<div id="exportWrapper" style="padding:10px;">`;
-    currentReportData.forEach(row => {
-        let trend = getTrendDataForModel(row.Model);
-        html += generateSlideHTML(row, trend);
-    });
+    let html = `<div id="exportWrapper" style="display:flex; flex-direction:column; align-items:center;">`;
+    currentReportData.forEach(r => html += generateSlideHTML(r));
     html += `</div>`;
     
-    document.getElementById('monthlyReportPreview').innerHTML = html;
+    document.getElementById('previewContainer').innerHTML = html;
     document.getElementById('reportActions').style.display='flex';
 }
 
-// --- EXPORT FUNCTIONS ---
+function closeModal() { document.getElementById('previewModal').style.display = 'none'; }
+
+// --- DOWNLOAD FUNCTIONS ---
 
 function downloadPDFReport(){
     const el = document.getElementById('exportWrapper');
     html2pdf().set({ 
-        margin: [5, 5, 5, 5], 
-        filename:'Report.pdf', 
+        margin: 0, 
+        filename:'Landscape_Report.pdf', 
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas:{ scale:2, useCORS: true }, 
-        jsPDF:{ unit:'mm', format:'a4', orientation:'landscape'},
-        pagebreak: { mode: ['css', 'legacy'] } 
+        jsPDF:{ unit:'in', format:[13.33, 7.5], orientation:'landscape'} // Approx 16:9 ratio
     }).from(el).save();
-}
-
-function downloadExcel(){
-    if(!currentReportData.length) return;
-    const ws = XLSX.utils.json_to_sheet(currentReportData.map(r=>({
-        Date:r.Date, ODM:r.ODM, Model:r.Model, Item:r.Item, Issue:r.DefectDetails, Rate:r.DefectRate+"%", RCA:r.RCA
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Data");
-    XLSX.writeFile(wb, "Report_Data.xlsx");
 }
 
 async function downloadProfessionalPPT() {
@@ -467,82 +471,85 @@ async function downloadProfessionalPPT() {
     
     try {
         let pptx = new PptxGenJS();
-        pptx.layout = 'LAYOUT_16x9';
+        pptx.layout = 'LAYOUT_16x9'; // Landscape 10 x 5.625 inches
 
+        // Define Master Slide
         pptx.defineSlideMaster({
-            title: "DASHBOARD",
-            background: { color: "FFFFFF" },
-            objects: [
-                { rect: { x: 0, y: 0, w: 0.4, h: "100%", fill: { type: 'solid', color: 'A9D0F5' } } }, 
-                { rect: { x: 0.4, y: 0, w: 0.2, h: "100%", fill: { type: 'solid', color: 'E1F0FB' } } },
-                (base64Logo ? { image: { data: base64Logo, x: 8.5, y: 0.2, w: 1.2, h: 0.6 } } : null)
-            ].filter(Boolean)
+            title: "MASTER",
+            background: { color: "FFFFFF" }
         });
 
-        // Loop rows
-        for(let row of currentReportData) {
-            let slide = pptx.addSlide({ masterName: "DASHBOARD" });
+        // LOOP THROUGH DATA
+        for(let r of currentReportData) {
+            let slide = pptx.addSlide({ masterName: "MASTER" });
 
-            slide.addText(row.ODM || "ODM", { x: 0.8, y: 0.4, fontSize: 28, color: '003366', bold: true });
-            slide.addText(`❖ Model :- ${row.Model||""}`, { x: 0.8, y: 1.2, fontSize: 16, color: '000000', bold: true });
-            slide.addText(`      Item :- ${row.Item||""}`, { x: 0.8, y: 1.5, fontSize: 14, color: '333333' });
+            // 1. HEADER (Full Width)
+            // Logo (Left)
+            if(base64Logo) slide.addImage({ data: base64Logo, x: 0.3, y: 0.2, w: 1.5, h: 0.6 });
+            // Title (Right)
+            slide.addText("DEFECT ANALYSIS REPORT", { x: 5.0, y: 0.2, w: 4.7, fontSize: 18, color: '0369a1', bold: true, align: 'right' });
+            slide.addText("Quality Assurance Dept.", { x: 5.0, y: 0.5, w: 4.7, fontSize: 10, color: '666666', align: 'right' });
+            // Blue Line
+            slide.addShape(pptx.ShapeType.line, { x: 0.3, y: 0.9, w: 9.4, h: 0, line: { color: '0369a1', width: 2 } });
 
-            slide.addText("Issues", { x: 1.5, y: 1.9, fontSize: 14, color: '000000', bold: true });
-            slide.addText(row.DefectDetails || "No details", { x: 1.5, y: 2.2, w: 4.8, h: 0.8, fontSize: 14, color: '333333', wrap: true, valign: 'top' });
-
-            // SIMPLE TARGET ICON (CIRCLE) TO PREVENT CRASH
-            slide.addShape(pptx.ShapeType.ellipse, { x:0.8, y:2.5, w:0.8, h:0.8, fill:'40E0D0', line:{width:0} }); 
-            slide.addShape(pptx.ShapeType.ellipse, { x:0.95, y:2.65, w:0.5, h:0.5, fill:{type:'none'}, line:{color:'FFFFFF', width:2} });
+            // 2. INFO BAR (Top Row) - y: 1.1
+            let infoBg = { color: 'F8F9FA' };
+            // We'll just print text labels horizontally
+            let yInfo = 1.1;
+            let xPos = 0.3;
             
-            slide.addText(`Rejection Rate %   ~${row.DefectRate}%`, { x: 1.8, y: 2.7, fontSize: 18, color: 'CC0000', bold: true });
+            // Helper to add info block
+            let addInfo = (lbl, val, width) => {
+                slide.addText(lbl, { x:xPos, y:yInfo, w:width, fontSize:9, color:'666666', bold:true });
+                slide.addText(val, { x:xPos, y:yInfo+0.2, w:width, fontSize:11, color:'000000', bold:true });
+                xPos += width + 0.2;
+            };
 
-            // Charts & Tables
-            let trend = getTrendDataForModel(row.Model);
-            let labels = Object.keys(trend).slice(-6); 
-            let dataRate = labels.map(k => parseFloat(trend[k].rate) || 0);
-            let dataDef = labels.map(k => parseFloat(trend[k].def) || 0);
-            let dataProd = labels.map(k => parseFloat(trend[k].qty) || 0);
+            addInfo("ODM NAME", r.ODM, 1.2);
+            addInfo("MODEL NO.", r.Model, 1.2);
+            addInfo("ITEM NAME", r.Item, 1.2);
+            addInfo("PO NUMBER", r.PO, 1.2);
+            addInfo("REPORT DATE", r.Date.replace("'",""), 1.2);
+            addInfo("PREPARED BY", r.PreparedBy, 1.2);
 
-            slide.addText(`${(row.Item||"").toUpperCase()} DEFECT TREND`, { x: 0.8, y: 3.4, w: 5.0, fontSize: 10, color: '666666', bold: true, align: 'center' });
+            // 3. LEFT COLUMN (TEXT) - x: 0.3, y: 1.8, w: 6.0
+            // Desc
+            slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 1.8, w: 6.0, h: 0.35, fill: { color: 'EEF6FB' } });
+            slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 1.8, w: 0.05, h: 0.35, fill: { color: '0369a1' } });
+            slide.addText("1. Defect Description & Observation", { x: 0.4, y: 1.8, w: 5.5, h: 0.35, fontSize: 11, color: '005a8d', bold: true, valign: 'middle' });
+            slide.addText(r.DefectDetails || "N/A", { x: 0.3, y: 2.2, w: 6.0, h: 1.2, fontSize: 10, color: '333333', valign: 'top' });
 
-            if (labels.length > 0) {
-                try {
-                    let chartData = [
-                        { name: "Defect Qty", type: pptx.ChartType.bar, data: dataDef, labels: labels },
-                        { name: "Defect %", type: pptx.ChartType.line, data: dataRate, labels: labels }
-                    ];
-                    slide.addChart(pptx.ChartType.bar, chartData, { x: 0.8, y: 3.6, w: 5.5, h: 2.5, barDir: 'col', chartColors: ['ED7D31', 'A5A5A5'], showValue: true, valAxisHidden: true, gridLine: { style: 'none' } });
-                } catch(e){}
-            }
+            // RCA
+            slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 3.6, w: 6.0, h: 0.35, fill: { color: 'EEF6FB' } });
+            slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 3.6, w: 0.05, h: 0.35, fill: { color: '0369a1' } });
+            slide.addText("2. Root Cause Analysis (RCA)", { x: 0.4, y: 3.6, w: 5.5, h: 0.35, fontSize: 11, color: '005a8d', bold: true, valign: 'middle' });
+            slide.addText(r.RCA || "N/A", { x: 0.3, y: 4.0, w: 6.0, h: 1.2, fontSize: 10, color: '333333', valign: 'top' });
 
-            let tableRows = [
-                [{ text: "Index", options:{fill:'ED7D31', color:'FFFFFF', bold:true} }, ...labels.map(l => ({ text: l, options:{fill:'ED7D31', color:'FFFFFF', bold:true} }))],
-                [{ text: "Prod", options:{fill:'FCE4D6', bold:true} }, ...dataProd.map(v => ({ text: v, options:{fill:'FCE4D6'} }))],
-                [{ text: "Defect", options:{fill:'FCE4D6', bold:true} }, ...dataDef.map(v => ({ text: v, options:{fill:'FCE4D6'} }))],
-                [{ text: "Defect %", options:{fill:'FCE4D6', bold:true} }, ...dataRate.map(v => ({ text: v+"%", options:{fill:'FCE4D6'} }))]
-            ];
-            slide.addTable(tableRows, { x: 0.8, y: 6.2, w: 5.5, fontSize: 9, align: 'center', border: { pt: 1, color: 'FFFFFF' } });
+            // 4. RIGHT COLUMN (VISUALS) - x: 6.5, y: 1.8, w: 3.2
+            // Defect Rate Box
+            slide.addShape(pptx.ShapeType.rect, { x: 6.5, y: 1.8, w: 3.2, h: 1.0, fill: { color: '0369a1' }, rx: 5 });
+            slide.addText("DEFECT RATE", { x: 6.5, y: 1.9, w: 3.2, fontSize: 10, color: 'FFFFFF', align: 'center' });
+            slide.addText(r.DefectRate + "%", { x: 6.5, y: 2.2, w: 3.2, fontSize: 32, color: 'FFFFFF', bold: true, align: 'center' });
 
-            slide.addText("Defect\nImages", { x: 6.5, y: 1.2, w: 1.0, fontSize: 10, bold: true, align: 'right' });
-            slide.addShape(pptx.ShapeType.rect, { x: 7.6, y: 1.2, w: 2.2, h: 0.6, fill: '5B9BD5' });
-            slide.addText("• " + (row.DefectDetails || ""), { x: 7.6, y: 1.2, w: 2.2, h: 0.6, fontSize: 11, color: 'FFFFFF', bold: true, align: 'left', valign: 'middle', wrap: true });
-
-            let imgs = (row.ImageURLs||"").split(" || ").filter(Boolean);
-            let imgY = 1.9;
+            // Images
+            let imgs = (r.ImageURLs||"").split(" || ").filter(Boolean);
+            let imgY = 3.0;
+            
+            // Only show max 2 images in this layout to fit
             for(let i=0; i<Math.min(imgs.length, 2); i++) {
                 try {
-                    if(imgs[i] && imgs[i].length > 100) {
-                        if(imgs[i].startsWith("data:image")) slide.addImage({ data: imgs[i], x: 7.0, y: imgY, w: 2.8, h: 2.2 });
-                        else slide.addImage({ path: imgs[i], x: 7.0, y: imgY, w: 2.8, h: 2.2 });
-                        imgY += 2.4;
-                    }
-                } catch(e) {}
+                    // Safe Image Add
+                    let imgOpt = { x: 6.5, y: imgY, w: 3.2, h: 2.2 };
+                    if(imgs[i].startsWith("data:")) slide.addImage({ data: imgs[i], ...imgOpt });
+                    else slide.addImage({ path: imgs[i], ...imgOpt });
+                    imgY += 2.3; // Move down for next image (if space allows, otherwise it overlaps/goes off)
+                } catch(e) { console.log("PPT Img Error"); }
             }
-            slide.addShape(pptx.ShapeType.arc, { x: 9.0, y: 6.5, w: 1.5, h: 1.5, line: { color: '333333', width: 2 } });
         }
 
-        pptx.writeFile({ fileName: `Professional_Report.pptx` }).then(() => {
-            btn.innerText = "📊 Download PPT";
+        pptx.writeFile({ fileName: `Landscape_Report_${new Date().getTime()}.pptx` }).then(() => {
+            btn.innerText = "✅ Downloaded!";
+            setTimeout(() => btn.innerText = "📊 Download PPT", 2000);
         });
 
     } catch(e) {
@@ -555,12 +562,10 @@ function switchTab(t){
     document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
     document.getElementById(t+'Tab').classList.add('active');
-    // Toggle active logic simplified
     const btns = document.querySelectorAll('.tab-btn');
     if(t==='entry') btns[0].classList.add('active'); else btns[1].classList.add('active');
 }
 
-// SETUP ON LOAD
 document.addEventListener('DOMContentLoaded', function() {
     convertLogoToBase64();
     loadData();
@@ -568,7 +573,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('clearBtn').onclick = clearForm;
     document.getElementById('refreshBtn').onclick = loadData;
     document.getElementById('btnPPT').onclick = downloadProfessionalPPT;
-    document.getElementById('btnExcel').onclick = downloadExcel;
     document.getElementById('btnPDF').onclick = downloadPDFReport;
 });
 </script>
