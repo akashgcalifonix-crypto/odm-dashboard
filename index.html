@@ -34,6 +34,7 @@
     /* --- BUTTONS --- */
     .btn { background: #0369a1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn:hover { background: #025686; transform: translateY(-1px); }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
     .btn.secondary { background: #6b7280; }
     .btn.danger { background: #dc3545; }
     .btn.ppt { background: #D24726; } 
@@ -109,6 +110,7 @@
         color: #333;
         background: #fff;
         height: 100%;
+        white-space: pre-wrap; /* Preserve line breaks */
     }
 
     /* Rate Box */
@@ -220,8 +222,12 @@
 </div>
 
 <script>
-// --- CONFIGURATION ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGCDn3USDWCByX5a-rgiZDkX-YwdfH4y1bd6_PgpLs-ZXgLo9FG5eboPSt4zKI8TfEcA/exec"; 
+// =========================================================
+// REPLACE THIS URL WITH YOUR NEW WEB APP URL FROM GOOGLE SCRIPT
+// =========================================================
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwvRnn6evdYU5EzLTX9mSN77FA3wULpLgPXu1MuifrhlMvxTHgJqGQ_Uzf6msf7hvrQVg/exec"; 
+// =========================================================
+
 const LOGO_URL = "https://i.postimg.cc/5y7SN4xc/logo.png";
 
 let allData = [];
@@ -241,21 +247,44 @@ function convertLogoToBase64() {
     img.src = LOGO_URL;
 }
 
+// --- ROBUST IMAGE HANDLING (PREVENTS INDEXOF ERROR) ---
 function readFilesAndCompress(files) {
-  return Promise.all([...files].map(file => new Promise(resolve => {
+  return Promise.all([...files].map(file => new Promise((resolve) => {
+    // 1. Check File Type (Must be image)
+    if (!file.type.match('image.*')) {
+        console.warn("Non-image file skipped");
+        resolve(null); 
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
+        // 2. Resize Logic (800px max)
         const c = document.createElement('canvas');
         let w = img.width, h = img.height;
-        if(w > 800) { h *= 800/w; w = 800; }
+        const MAX = 800; 
+
+        if(w > h){ if(w > MAX){ h *= MAX/w; w = MAX; } }
+        else { if(h > MAX){ w *= MAX/h; h = MAX; } }
+
         c.width = w; c.height = h;
         c.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL('image/jpeg', 0.7));
+        
+        // 3. Return Clean Base64
+        const data = c.toDataURL('image/jpeg', 0.7);
+        // Validation check to ensure data is valid string
+        if(data && data.startsWith('data:image')) {
+            resolve(data);
+        } else {
+            resolve(null);
+        }
       };
+      img.onerror = () => { console.error("Image load failed"); resolve(null); };
       img.src = e.target.result;
     };
+    reader.onerror = () => { console.error("File read failed"); resolve(null); };
     reader.readAsDataURL(file);
   })));
 }
@@ -275,18 +304,28 @@ async function saveRecord(){
     try {
         let imgs = [];
         const files = document.getElementById('images').files;
-        if(files.length) imgs = await readFilesAndCompress(files);
+        
+        // --- SAFE IMAGE PROCESSING ---
+        if(files.length > 0) {
+            const processed = await readFilesAndCompress(files);
+            // Remove NULLs (Failed/Corrupted images)
+            imgs = processed.filter(img => img !== null);
+            
+            if(imgs.length === 0 && files.length > 0){
+                alert("Warning: Selected images could not be processed. Saving text data only.");
+            }
+        }
 
         const rid = document.getElementById('editRowIndex').value;
         
-        // KEEP OLD IMAGES IF EDITING
-        if(rid && !imgs.length){
+        // KEEP OLD IMAGES IF EDITING & NO NEW UPLOAD
+        if(rid && imgs.length === 0 && files.length === 0){
             let old = allData.find(x=>x._rowIndex==rid);
             if(old && old.ImageURLs) imgs = old.ImageURLs.split(" || ");
         }
 
         const rec = {
-            date: document.getElementById('date').value,
+            date: document.getElementById('date').value || new Date().toISOString().slice(0,10),
             odm: document.getElementById('odm').value,
             model: document.getElementById('model').value,
             po: document.getElementById('po').value,
@@ -295,10 +334,16 @@ async function saveRecord(){
             defectRate: document.getElementById('defectRate').value,
             rca: document.getElementById('rca').value,
             preparedBy: document.getElementById('preparedBy').value,
-            images: imgs
+            images: imgs // Safe Array
         };
 
-        let res = await fetch(SCRIPT_URL, { method:"POST", body:JSON.stringify({ action:rid?"update":"create", record:rec, rowIndex:rid }) });
+        // Send to Apps Script
+        // NOTE: We rely on the script to handle column mapping
+        let res = await fetch(SCRIPT_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action:rid?"update":"create", record:rec, rowIndex:rid }) 
+        });
+        
         let j = await res.json();
         
         if(j.status==="success"){ 
@@ -306,11 +351,11 @@ async function saveRecord(){
             clearForm(); 
             loadData(); 
         } else { 
-            alert("Error: "+j.message); 
+            alert("Server Error: "+j.message); 
         }
     } catch(e){
         console.error(e); 
-        alert("Connection Error. Check SCRIPT_URL or Internet.");
+        alert("Connection Error. Check internet or Script URL.");
     }
     
     btn.innerText="Save Record"; btn.disabled=false;
@@ -328,16 +373,17 @@ function editRec(id){
     let r = allData.find(x=>x._rowIndex==id);
     if(!r) return;
     
-    // Populate Form
-    document.getElementById('date').value = r.Date.replace("'","");
-    document.getElementById('odm').value = r.ODM;
-    document.getElementById('model').value = r.Model;
-    document.getElementById('po').value = r.PO;
-    document.getElementById('item').value = r.Item;
-    document.getElementById('defectDetails').value = r.DefectDetails;
-    document.getElementById('defectRate').value = r.DefectRate;
-    document.getElementById('rca').value = r.RCA;
-    document.getElementById('preparedBy').value = r.PreparedBy;
+    // Populate Form (Using keys from corrected script)
+    document.getElementById('date').value = r.Date ? r.Date.replace("'","") : "";
+    document.getElementById('odm').value = r.ODM || "";
+    document.getElementById('model').value = r.Model || "";
+    document.getElementById('po').value = r.PO || "";
+    document.getElementById('item').value = r.Item || "";
+    // Note: Script sends 'DefectDetails'
+    document.getElementById('defectDetails').value = r.DefectDetails || ""; 
+    document.getElementById('defectRate').value = r.DefectRate || "";
+    document.getElementById('rca').value = r.RCA || "";
+    document.getElementById('preparedBy').value = r.PreparedBy || "";
     
     // Set Hidden Index & Button Text
     document.getElementById('editRowIndex').value = id;
@@ -349,6 +395,7 @@ function editRec(id){
 
 function clearForm(){
     document.querySelectorAll('#entryTab input, #entryTab textarea').forEach(e=>e.value="");
+    document.getElementById('images').value = ""; // Clear file input
     document.getElementById('editRowIndex').value="";
     document.getElementById('saveBtn').innerText="Save Record";
 }
@@ -360,26 +407,39 @@ async function loadData(){
     try{
         let res = await fetch(SCRIPT_URL);
         let j = await res.json();
+        
+        if(j.status === 'error') {
+             tb.innerHTML=`<tr><td colspan='6'>Error: ${j.message}</td></tr>`;
+             return;
+        }
+
         allData = j.rows;
         renderTable(allData);
-    }catch(e){ tb.innerHTML="<tr><td colspan='6'>Error loading data</td></tr>"; }
+    }catch(e){ tb.innerHTML="<tr><td colspan='6'>Connection Error or Invalid URL</td></tr>"; }
 }
 
 function renderTable(rows){
     const tb = document.querySelector("#dataTable tbody");
     tb.innerHTML="";
-    if(!rows || rows.length === 0) { tb.innerHTML="<tr><td colspan='6'>No Data</td></tr>"; return; }
+    if(!rows || !Array.isArray(rows) || rows.length === 0) { tb.innerHTML="<tr><td colspan='6' align='center'>No Data Found</td></tr>"; return; }
     
     rows.forEach(r=>{
+        // Check property existence before access
+        let dateVal = r.Date ? r.Date.replace("'","") : "";
+        let modelVal = r.Model || "";
+        let defectVal = r.DefectDetails ? r.DefectDetails.substring(0,30) + "..." : "";
+        let rateVal = r.DefectRate || 0;
         let img = (r.ImageURLs||"").split(" || ")[0];
-        let thumb = img ? `<img src="${img}" class="thumb">` : "";
+        
+        let thumb = img ? `<img src="${img}" class="thumb">` : "<span style='color:#ccc;font-size:10px'>No Img</span>";
+        
         let tr = document.createElement("tr");
         
         tr.innerHTML=`
-            <td>${r.Date.replace("'","")}</td>
-            <td>${r.Model}</td>
-            <td>${r.DefectDetails.substring(0,30)}...</td>
-            <td style="color:${r.DefectRate>5?'red':'green'}">${r.DefectRate}%</td>
+            <td>${dateVal}</td>
+            <td>${modelVal}</td>
+            <td>${defectVal}</td>
+            <td style="color:${parseFloat(rateVal)>5?'red':'green'}">${rateVal}%</td>
             <td>${thumb}</td>
             <td style="white-space:nowrap;">
                 <button class="btn secondary" style="padding:4px 8px;" onclick="previewSingle(${r._rowIndex})">👁️</button>
@@ -409,12 +469,12 @@ function generateSlideHTML(r) {
 
         <!-- INFO BAR -->
         <div class="rep-info-bar">
-            <div class="info-item"><span>ODM Name</span><span>${r.ODM}</span></div>
-            <div class="info-item"><span>Model No.</span><span>${r.Model}</span></div>
-            <div class="info-item"><span>Item Name</span><span>${r.Item}</span></div>
-            <div class="info-item"><span>PO Number</span><span>${r.PO}</span></div>
-            <div class="info-item"><span>Report Date</span><span>${r.Date.replace("'","")}</span></div>
-            <div class="info-item"><span>Prepared By</span><span>${r.PreparedBy}</span></div>
+            <div class="info-item"><span>ODM Name</span><span>${r.ODM || '-'}</span></div>
+            <div class="info-item"><span>Model No.</span><span>${r.Model || '-'}</span></div>
+            <div class="info-item"><span>Item Name</span><span>${r.Item || '-'}</span></div>
+            <div class="info-item"><span>PO Number</span><span>${r.PO || '-'}</span></div>
+            <div class="info-item"><span>Report Date</span><span>${r.Date ? r.Date.replace("'","") : '-'}</span></div>
+            <div class="info-item"><span>Prepared By</span><span>${r.PreparedBy || '-'}</span></div>
         </div>
 
         <!-- MAIN BODY (SPLIT) -->
@@ -423,11 +483,11 @@ function generateSlideHTML(r) {
             <div class="rep-left">
                 <div>
                     <div class="rep-sec-head">1. Defect Description & Observation</div>
-                    <div class="rep-text-box">${r.DefectDetails}</div>
+                    <div class="rep-text-box">${r.DefectDetails || ''}</div>
                 </div>
                 <div>
                     <div class="rep-sec-head">2. Root Cause Analysis (RCA)</div>
-                    <div class="rep-text-box">${r.RCA}</div>
+                    <div class="rep-text-box">${r.RCA || ''}</div>
                 </div>
             </div>
 
@@ -436,7 +496,7 @@ function generateSlideHTML(r) {
                 <!-- Rate Card -->
                 <div class="rep-rate-card">
                     <div class="rep-rate-lbl">Defect Rate</div>
-                    <div class="rep-rate-val">${r.DefectRate}%</div>
+                    <div class="rep-rate-val">${r.DefectRate || 0}%</div>
                 </div>
                 <!-- Images -->
                 <div class="rep-img-box">${img1}</div>
@@ -459,10 +519,15 @@ function generatePreview() {
     const mInput = document.getElementById('reportMonthInput').value;
     if(!mInput) return alert("Select Month");
     const [yr, mo] = mInput.split('-');
-    currentReportData = allData.filter(r => r.Date.replace("'","").startsWith(`${yr}-${mo}`));
+    
+    // Filter data safely
+    currentReportData = allData.filter(r => {
+        let d = r.Date ? r.Date.replace("'","") : "";
+        return d.startsWith(`${yr}-${mo}`);
+    });
     
     if(!currentReportData.length) {
-        document.getElementById('previewContainer').innerHTML = "<h3 align='center'>No Data Found</h3>";
+        document.getElementById('previewContainer').innerHTML = "<h3 align='center'>No Data Found for this Month</h3>";
         document.getElementById('reportActions').style.display='none';
         return;
     }
@@ -510,22 +575,17 @@ async function downloadProfessionalPPT() {
             let slide = pptx.addSlide({ masterName: "MASTER" });
 
             // 1. HEADER (Full Width)
-            // Logo (Left)
             if(base64Logo) slide.addImage({ data: base64Logo, x: 0.3, y: 0.2, w: 1.5, h: 0.6 });
-            // Title (Right)
             slide.addText("DEFECT ANALYSIS REPORT", { x: 5.0, y: 0.2, w: 4.7, fontSize: 18, color: '0369a1', bold: true, align: 'right' });
             slide.addText("Quality Assurance Dept.", { x: 5.0, y: 0.5, w: 4.7, fontSize: 10, color: '666666', align: 'right' });
-            // Blue Line
             slide.addShape(pptx.ShapeType.line, { x: 0.3, y: 0.9, w: 9.4, h: 0, line: { color: '0369a1', width: 2 } });
 
-            // 2. INFO BAR (Top Row) - y: 1.1
+            // 2. INFO BAR
             let yInfo = 1.1;
             let xPos = 0.3;
-            
-            // Helper to add info block
             let addInfo = (lbl, val, width) => {
                 slide.addText(lbl, { x:xPos, y:yInfo, w:width, fontSize:9, color:'666666', bold:true });
-                slide.addText(val, { x:xPos, y:yInfo+0.2, w:width, fontSize:11, color:'000000', bold:true });
+                slide.addText(val || "-", { x:xPos, y:yInfo+0.2, w:width, fontSize:11, color:'000000', bold:true });
                 xPos += width + 0.2;
             };
 
@@ -533,40 +593,34 @@ async function downloadProfessionalPPT() {
             addInfo("MODEL NO.", r.Model, 1.2);
             addInfo("ITEM NAME", r.Item, 1.2);
             addInfo("PO NUMBER", r.PO, 1.2);
-            addInfo("REPORT DATE", r.Date.replace("'",""), 1.2);
+            addInfo("REPORT DATE", r.Date ? r.Date.replace("'","") : "-", 1.2);
             addInfo("PREPARED BY", r.PreparedBy, 1.2);
 
-            // 3. LEFT COLUMN (TEXT) - x: 0.3, y: 1.8, w: 6.0
-            // Desc
+            // 3. LEFT COLUMN (TEXT)
             slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 1.8, w: 6.0, h: 0.35, fill: { color: 'EEF6FB' } });
             slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 1.8, w: 0.05, h: 0.35, fill: { color: '0369a1' } });
             slide.addText("1. Defect Description & Observation", { x: 0.4, y: 1.8, w: 5.5, h: 0.35, fontSize: 11, color: '005a8d', bold: true, valign: 'middle' });
             slide.addText(r.DefectDetails || "N/A", { x: 0.3, y: 2.2, w: 6.0, h: 1.2, fontSize: 10, color: '333333', valign: 'top' });
 
-            // RCA
             slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 3.6, w: 6.0, h: 0.35, fill: { color: 'EEF6FB' } });
             slide.addShape(pptx.ShapeType.rect, { x: 0.3, y: 3.6, w: 0.05, h: 0.35, fill: { color: '0369a1' } });
             slide.addText("2. Root Cause Analysis (RCA)", { x: 0.4, y: 3.6, w: 5.5, h: 0.35, fontSize: 11, color: '005a8d', bold: true, valign: 'middle' });
             slide.addText(r.RCA || "N/A", { x: 0.3, y: 4.0, w: 6.0, h: 1.2, fontSize: 10, color: '333333', valign: 'top' });
 
-            // 4. RIGHT COLUMN (VISUALS) - x: 6.5, y: 1.8, w: 3.2
-            // Defect Rate Box
+            // 4. RIGHT COLUMN (VISUALS)
             slide.addShape(pptx.ShapeType.rect, { x: 6.5, y: 1.8, w: 3.2, h: 1.0, fill: { color: '0369a1' }, rx: 5 });
             slide.addText("DEFECT RATE", { x: 6.5, y: 1.9, w: 3.2, fontSize: 10, color: 'FFFFFF', align: 'center' });
-            slide.addText(r.DefectRate + "%", { x: 6.5, y: 2.2, w: 3.2, fontSize: 32, color: 'FFFFFF', bold: true, align: 'center' });
+            slide.addText((r.DefectRate || 0) + "%", { x: 6.5, y: 2.2, w: 3.2, fontSize: 32, color: 'FFFFFF', bold: true, align: 'center' });
 
             // Images
             let imgs = (r.ImageURLs||"").split(" || ").filter(Boolean);
             let imgY = 3.0;
-            
-            // Only show max 2 images in this layout to fit
             for(let i=0; i<Math.min(imgs.length, 2); i++) {
                 try {
-                    // Safe Image Add
                     let imgOpt = { x: 6.5, y: imgY, w: 3.2, h: 2.2 };
                     if(imgs[i].startsWith("data:")) slide.addImage({ data: imgs[i], ...imgOpt });
                     else slide.addImage({ path: imgs[i], ...imgOpt });
-                    imgY += 2.3; // Move down for next image
+                    imgY += 2.3; 
                 } catch(e) { console.log("PPT Img Error"); }
             }
         }
